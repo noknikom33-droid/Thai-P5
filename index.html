@@ -170,13 +170,9 @@ textarea{resize:vertical;min-height:150px}
     <p class="sub">ฝึกอ่านคำภาษาไทย สำหรับชั้น ป.5</p>
     <form id="auth-form">
       <h2 class="display" id="auth-title" style="margin-bottom:16px">เข้าสู่ระบบ</h2>
-      <div class="field" id="name-field" style="display:none">
-        <label for="dname">ชื่อที่แสดง</label>
-        <input id="dname" type="text" placeholder="เช่น น้องฟ้า" autocomplete="name">
-      </div>
       <div class="field">
-        <label for="email">อีเมล</label>
-        <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+        <label for="username">ชื่อผู้ใช้</label>
+        <input id="username" type="text" placeholder="เช่น ครู หรือ ชื่อเล่น" autocomplete="username">
       </div>
       <div class="field">
         <label for="password">รหัสผ่าน</label>
@@ -361,18 +357,17 @@ $("auth-toggle").addEventListener("click", () => {
   $("auth-title").textContent  = signup ? "สมัครสมาชิกใหม่" : "เข้าสู่ระบบ";
   $("auth-submit").textContent = signup ? "สมัครสมาชิก" : "เข้าสู่ระบบ";
   $("auth-toggle").textContent = signup ? "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ" : "ยังไม่มีบัญชี? สมัครสมาชิก";
-  $("name-field").style.display = signup ? "block" : "none";
 });
 
 $("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = $("email").value.trim(), password = $("password").value;
-  if (!email || !password) return toast("กรอกอีเมลและรหัสผ่านด้วยนะ", "error");
+  const username = $("username").value.trim(), password = $("password").value;
+  if (!username || !password) return toast("กรอกชื่อผู้ใช้และรหัสผ่านด้วยนะ", "error");
   loading(true, authMode === "login" ? "กำลังเข้าสู่ระบบ..." : "กำลังสมัครสมาชิก...");
   try {
     const res = authMode === "login"
-      ? await api("login", { email, password })
-      : await api("register", { email, password, displayName: $("dname").value.trim() });
+      ? await api("login", { username, password })
+      : await api("register", { username, password });
     setSession(res.user, res.token);
     loading(false);
     if (authMode === "signup" && res.user.role === "teacher")
@@ -386,7 +381,7 @@ function setSession(user, token) {
   localStorage.setItem("session", JSON.stringify(state));
   $("appbar").style.display = "flex";
   $("nav-admin").style.display = user.role === "teacher" ? "inline-flex" : "none";
-  $("greeting").textContent = "สวัสดี " + (user.displayName || "เพื่อน") + " 👋";
+  $("greeting").textContent = "สวัสดี " + (user.displayName || user.username || "เพื่อน") + " 👋";
 }
 
 $("nav-logout").addEventListener("click", () => {
