@@ -264,7 +264,7 @@ textarea{resize:vertical;min-height:150px}
 
     <div class="section" id="word-panel" style="display:none">
       <h2 id="word-panel-title">คำในบทเรียน</h2>
-      <p class="hint">เพิ่มคำได้โดยพิมพ์ทีละบรรทัด จากนั้นกด 🎙️ ที่คำแต่ละคำเพื่ออัดเสียงครู</p>
+      <p class="hint">เพิ่มคำได้โดยพิมพ์ทีละบรรทัด จากนั้นกด 🎙️ ที่คำแต่ละคำเพื่ออัดเสียง หรือเพิ่มไฟล์เสียงที่ครูอัดไว้แล้ว</p>
       <ul id="admin-words" class="list"></ul>
       <h3 class="display" style="margin-top:16px">วางหลายคำพร้อมกัน</h3>
       <p class="hint">พิมพ์หรือวางคำ <strong>บรรทัดละ 1 คำ</strong> แล้วกดเพิ่ม</p>
@@ -278,9 +278,13 @@ textarea{resize:vertical;min-height:150px}
 <div id="rec-overlay" class="overlay">
   <div class="rec-box">
     <h3 id="rec-title">อัดเสียง</h3>
-    <p class="hint">กด "เริ่มอัด" แล้วออกเสียงคำให้ชัด จากนั้นกด "หยุด" เพื่อฟังและบันทึก</p>
+    <p class="hint">เลือกได้ 2 วิธี — กด "เริ่มอัด" เพื่ออัดสด หรือเลือกไฟล์เสียงที่อัดไว้แล้วจากเครื่อง จากนั้นฟังและกดบันทึก</p>
     <div id="rec-status" class="muted">พร้อมอัด</div>
     <audio id="rec-audio" controls style="display:none;width:100%;margin:10px 0"></audio>
+    <div class="field" style="margin:6px 0 0">
+      <label for="rec-file">หรือเลือกไฟล์เสียงจากเครื่อง (mp3, m4a, wav ...)</label>
+      <input id="rec-file" type="file" accept="audio/*">
+    </div>
     <div class="rec-actions">
       <button class="btn" id="rec-start">🎙️ เริ่มอัด</button>
       <button class="btn btn--danger" id="rec-stop" style="display:none">⏹️ หยุด</button>
@@ -619,7 +623,7 @@ async function loadAdminWords(){ loading(true,"กำลังโหลดคำ
           <button class="mini" data-a="up" ${i===0?"disabled":""}>⬆️</button>
           <button class="mini" data-a="down" ${i===words.length-1?"disabled":""}>⬇️</button>
           <button class="mini" data-a="play">🔊 ฟัง</button>
-          <button class="mini" data-a="rec">🎙️ อัดเสียง</button>
+          <button class="mini" data-a="rec">🎙️ เพิ่มเสียง</button>
           <button class="mini" data-a="edit">✏️</button>
           <button class="mini mini--danger" data-a="del">🗑️</button></span>`;
       li.querySelector('[data-a="up"]').onclick=()=>swapWord(words,i,-1);
@@ -655,12 +659,21 @@ function blobToBase64(blob){ return new Promise((res,rej)=>{ const r=new FileRea
   r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
 
 function openRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word};
-  $("rec-title").textContent="อัดเสียงคำว่า: "+word.text;
-  $("rec-status").textContent=word.audioUrl?"มีเสียงอยู่แล้ว — อัดใหม่เพื่อแทนที่ได้":"พร้อมอัด";
-  const a=$("rec-audio");
-  if(word.audioUrl){a.src=word.audioUrl;a.style.display="block";}else{a.src="";a.style.display="none";}
+  $("rec-title").textContent="อัด/เพิ่มเสียงคำว่า: "+word.text;
+  $("rec-status").textContent=word.audioUrl?"มีเสียงอยู่แล้ว — อัดใหม่หรือเลือกไฟล์เพื่อแทนที่ได้":"พร้อมอัด";
+  $("rec-file").value="";
+  const a=$("rec-audio"); a.src=""; a.style.display="none";
+  if(word.audioUrl){ resolveAudioSrc(word.audioUrl).then(src=>{a.src=src;a.style.display="block";}).catch(()=>{}); }
   $("rec-start").style.display="inline-flex";$("rec-stop").style.display="none";$("rec-save").style.display="none";
   $("rec-overlay").style.display="flex"; }
+
+/* เลือกไฟล์เสียงจากเครื่อง -> แสดงตัวอย่างให้ฟัง แล้วกดบันทึกได้เลย */
+$("rec-file").addEventListener("change",(e)=>{ const file=e.target.files[0]; if(!file)return;
+  rec.blob=file;
+  const a=$("rec-audio"); a.src=URL.createObjectURL(file); a.style.display="block";
+  $("rec-save").style.display="inline-flex";
+  $("rec-start").style.display="inline-flex"; $("rec-stop").style.display="none";
+  $("rec-status").textContent="เลือกไฟล์แล้ว: "+file.name+" — ฟังก่อนได้ ถ้าโอเคกดบันทึก"; });
 
 $("rec-start").addEventListener("click",async()=>{
   try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const mime=pickAudioMime();
