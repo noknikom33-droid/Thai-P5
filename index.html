@@ -441,12 +441,22 @@ async function openLesson(lesson){ currentLessonId=lesson.id;
   loading(true,"กรุณารอสักครู่ กำลังโหลดบทเรียน...");
   try{
     currentWords=await api("getWords",{lessonId:lesson.id});
-    const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
     const valid=new Set(currentWords.map(w=>w.id));
+    // อ่านความก้าวหน้าจากเครื่องนี้ก่อน
+    const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
     readSet=new Set(saved.filter(id=>valid.has(id)));
+    // รวมกับความก้าวหน้าจากเซิร์ฟเวอร์ (ทำให้ดาวที่เคยได้ตามมาทุกเครื่อง)
+    if(state.user.role==="student"){
+      try{ const sp=await api("getLessonProgress",{lessonId:lesson.id});
+        (sp.readIds||[]).forEach(id=>{ if(valid.has(id)) readSet.add(id); });
+      }catch(_){}
+    }
+    // เก็บผลรวมกลับลงเครื่อง
+    localStorage.setItem("progress:"+lesson.id,JSON.stringify([...readSet]));
     await preloadAudio(currentWords);          // โหลดเสียงให้ครบก่อนเปิดหน้า
     $("lesson-title").textContent=lesson.title;
     renderWords(); updateProgress();
+    if(state.user.role==="student" && readSet.size) saveProgressToServer(); // sync ให้ตรงกัน
     show("view-lesson");                        // ค่อยแสดงหน้าบทเรียนเมื่อพร้อมแล้ว
     loading(false);
   }catch(err){ loading(false); toast(err.message,"error"); } }
@@ -475,9 +485,11 @@ function updateProgress(){ const total=currentWords.length, done=readSet.size;
     if(!sessionStorage.getItem("cel:"+currentLessonId)){ sessionStorage.setItem("cel:"+currentLessonId,"1");
       celebrate(); toast("ยอดเยี่ยม! อ่านครบทุกคำแล้ว ⭐","success"); } } }
 
-/* บันทึกความก้าวหน้าขึ้นเซิร์ฟเวอร์ (เฉพาะนักเรียน) แบบไม่บล็อกหน้าจอ */
+/* บันทึกความก้าวหน้าขึ้นเซิร์ฟเวอร์ (เฉพาะนักเรียน) แบบไม่บล็อกหน้าจอ
+   ส่ง readIds = รายการ id คำที่อ่านแล้ว เพื่อให้ sync ข้ามเครื่องได้ */
 function saveProgressToServer(){ if(state.user.role!=="student") return;
-  api("saveProgress",{lessonId:currentLessonId,readCount:readSet.size,totalCount:currentWords.length})
+  api("saveProgress",{lessonId:currentLessonId,readCount:readSet.size,
+    totalCount:currentWords.length,readIds:[...readSet]})
     .catch(()=>{}); }
 
 /* ===== แดชบอร์ดครู ===== */
