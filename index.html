@@ -92,6 +92,15 @@ img{display:block;max-width:100%}
 .speaker:hover{background:#2b86d6}
 .speaker:active{transform:scale(.9)}
 .speaker:focus-visible{outline:4px solid #bfe7ff;outline-offset:3px}
+.word-actions{display:flex;gap:12px;align-items:center;justify-content:center}
+.mic{width:70px;height:70px;border-radius:50%;background:var(--purple);color:#fff;font-size:1.7rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:transform .12s}
+.mic:hover{background:#785bc4}
+.mic:active{transform:scale(.9)}
+.mic:focus-visible{outline:4px solid #e0d4ff;outline-offset:3px}
+
+/* รายการเสียงอ่านของนักเรียน (แดชบอร์ดครู) */
+.rec-line{font-size:.92rem;color:var(--ink-soft)}
+.rec-line strong{color:var(--ink);font-size:1.05rem}
 
 /* หน้าครู / แดชบอร์ด */
 .section{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:22px;margin-bottom:22px}
@@ -222,6 +231,17 @@ textarea{resize:vertical;min-height:150px}
     </div>
 
     <div class="section">
+      <h2>🎧 เสียงอ่านของนักเรียน</h2>
+      <p class="hint">เสียงที่นักเรียนอัดอ่านคำแล้วส่งให้ครูฟัง — กด ▶️ เพื่อฟัง หรือ 🗑️ เพื่อลบ</p>
+      <div class="inline" style="align-items:center">
+        <div class="field"><label for="rec-filter-student">กรองตามนักเรียน</label>
+          <select id="rec-filter-student"><option value="">— นักเรียนทุกคน —</option></select></div>
+        <button class="mini" id="rec-refresh" style="margin-bottom:2px">🔄 รีเฟรช</button>
+      </div>
+      <ul id="rec-list" class="list"></ul>
+    </div>
+
+    <div class="section">
       <h2>เพิ่ม / จัดการนักเรียน</h2>
       <div class="inline">
         <div class="field"><label for="ds-username">ชื่อผู้ใช้ (สำหรับเข้าระบบ)</label>
@@ -233,6 +253,25 @@ textarea{resize:vertical;min-height:150px}
       </div>
       <button class="btn" id="ds-add" style="margin-top:12px">➕ เพิ่มนักเรียน</button>
       <ul id="student-list" class="list"></ul>
+    </div>
+
+    <div class="section">
+      <h2>⚙️ ตั้งค่าบัญชีครู</h2>
+      <h3 class="display" style="margin-bottom:8px">เปลี่ยนรหัสผ่านของฉัน</h3>
+      <p class="hint">เปลี่ยนรหัสผ่านบัญชีครูที่กำลังใช้งานอยู่ (อย่างน้อย 6 ตัวอักษร)</p>
+      <div class="inline">
+        <div class="field"><label for="cp-old">รหัสผ่านเดิม</label>
+          <input id="cp-old" type="password" placeholder="รหัสผ่านปัจจุบัน" autocomplete="current-password"></div>
+        <div class="field"><label for="cp-new">รหัสผ่านใหม่</label>
+          <input id="cp-new" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password"></div>
+      </div>
+      <button class="btn" id="cp-save" style="margin-top:12px">💾 บันทึกรหัสผ่านใหม่</button>
+
+      <hr style="border:none;border-top:1px solid #eef0f7;margin:22px 0">
+
+      <h3 class="display" style="margin-bottom:8px">เริ่มเทอมใหม่</h3>
+      <p class="hint">ล้างความก้าวหน้า (ดาว/จำนวนคำที่อ่านแล้ว) ของนักเรียน <strong>ทุกคน ทุกบท</strong> เพื่อเริ่มต้นใหม่ — ใช้เมื่อขึ้นเทอมใหม่ การลบนี้ย้อนกลับไม่ได้ (ไม่กระทบบทเรียน คำ หรือเสียงอ่าน)</p>
+      <button class="btn btn--danger" id="reset-term">♻️ ล้างความก้าวหน้าของนักเรียนทุกคน</button>
     </div>
   </div>
 </section>
@@ -442,21 +481,28 @@ async function openLesson(lesson){ currentLessonId=lesson.id;
   try{
     currentWords=await api("getWords",{lessonId:lesson.id});
     const valid=new Set(currentWords.map(w=>w.id));
-    // อ่านความก้าวหน้าจากเครื่องนี้ก่อน
-    const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
-    readSet=new Set(saved.filter(id=>valid.has(id)));
-    // รวมกับความก้าวหน้าจากเซิร์ฟเวอร์ (ทำให้ดาวที่เคยได้ตามมาทุกเครื่อง)
     if(state.user.role==="student"){
-      try{ const sp=await api("getLessonProgress",{lessonId:lesson.id});
-        (sp.readIds||[]).forEach(id=>{ if(valid.has(id)) readSet.add(id); });
-      }catch(_){}
+      // นักเรียน: ใช้ความก้าวหน้าจากเซิร์ฟเวอร์เป็นหลัก (ครูล้างผลแล้วจะหายจริง)
+      let serverIds=null;
+      try{ const sp=await api("getLessonProgress",{lessonId:lesson.id}); serverIds=sp.readIds||[]; }
+      catch(_){ serverIds=null; }
+      if(serverIds!==null){
+        readSet=new Set(serverIds.filter(id=>valid.has(id)));
+      }else{
+        // ต่อเน็ตไม่ได้ -> ใช้ค่าที่เก็บไว้ในเครื่องชั่วคราว
+        const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
+        readSet=new Set(saved.filter(id=>valid.has(id)));
+      }
+    }else{
+      // ครู (โหมดดูตัวอย่าง): ใช้ค่าในเครื่องนี้พอ
+      const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
+      readSet=new Set(saved.filter(id=>valid.has(id)));
     }
-    // เก็บผลรวมกลับลงเครื่อง
+    // เก็บผลกลับลงเครื่อง (ให้ตรงกับที่แสดง)
     localStorage.setItem("progress:"+lesson.id,JSON.stringify([...readSet]));
     await preloadAudio(currentWords);          // โหลดเสียงให้ครบก่อนเปิดหน้า
     $("lesson-title").textContent=lesson.title;
     renderWords(); updateProgress();
-    if(state.user.role==="student" && readSet.size) saveProgressToServer(); // sync ให้ตรงกัน
     show("view-lesson");                        // ค่อยแสดงหน้าบทเรียนเมื่อพร้อมแล้ว
     loading(false);
   }catch(err){ loading(false); toast(err.message,"error"); } }
@@ -465,14 +511,19 @@ function renderWords(){ const grid=$("word-grid"); grid.innerHTML="";
   if(!currentWords.length){ grid.innerHTML=`<p class="muted">บทเรียนนี้ยังไม่มีคำ 🐥</p>`; return; }
   currentWords.forEach(w=>{ const card=document.createElement("div");
     card.className="word-card"+(readSet.has(w.id)?" read":"");
+    const micBtn = state.user.role==="student"
+      ? `<button class="mic" aria-label="อัดเสียงอ่านคำว่า ${esc(w.text)}">🎤</button>` : "";
     card.innerHTML=`<span class="star">⭐</span><div class="word-text">${esc(w.text)}</div>
-      <button class="speaker" aria-label="ฟังเสียงคำว่า ${esc(w.text)}">🔊</button>`;
+      <div class="word-actions">
+        <button class="speaker" aria-label="ฟังเสียงคำว่า ${esc(w.text)}">🔊</button>${micBtn}
+      </div>`;
     card.querySelector(".speaker").addEventListener("click",()=>{
       card.classList.add("pop"); setTimeout(()=>card.classList.remove("pop"),300);
       speak(w.text,w.audioUrl);
       if(!readSet.has(w.id)){ readSet.add(w.id); card.classList.add("read");
         localStorage.setItem("progress:"+currentLessonId,JSON.stringify([...readSet]));
         updateProgress(); saveProgressToServer(); } });
+    const mic=card.querySelector(".mic"); if(mic) mic.addEventListener("click",()=>openStudentRecorder(w));
     grid.appendChild(card); }); }
 
 function updateProgress(){ const total=currentWords.length, done=readSet.size;
@@ -496,16 +547,18 @@ function saveProgressToServer(){ if(state.user.role!=="student") return;
 $("nav-dashboard").addEventListener("click",goDashboard);
 async function goDashboard(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
   show("view-dashboard"); loading(true,"กำลังโหลดข้อมูลนักเรียน...");
-  try{ const [students,lessons,progress]=await Promise.all([
-      api("listStudents"),api("getLessons"),api("getProgressAll")]);
-    loading(false); dashState={students,lessons,progress}; renderDashboard(); }
+  try{ const [students,lessons,progress,recordings]=await Promise.all([
+      api("listStudents"),api("getLessons"),api("getProgressAll"),api("getRecordings")]);
+    loading(false); dashState={students,lessons,progress,recordings}; renderDashboard(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 function renderDashboard(){ const {students,lessons,progress}=dashState;
   const map={}; progress.forEach(p=>{ (map[p.username]=map[p.username]||{})[p.lessonId]=p; });
   $("dash-stats").innerHTML =
     `<div class="stat"><div class="num">${students.length}</div><div class="lbl">👧 นักเรียน</div></div>`+
-    `<div class="stat"><div class="num">${lessons.length}</div><div class="lbl">📚 บทเรียน</div></div>`;
+    `<div class="stat"><div class="num">${lessons.length}</div><div class="lbl">📚 บทเรียน</div></div>`+
+    `<div class="stat"><div class="num">${(dashState.recordings||[]).length}</div><div class="lbl">🎧 เสียงอ่าน</div></div>`;
+  renderRecordings();
 
   // ตารางความก้าวหน้า
   if(!students.length){ $("dash-progress").innerHTML=`<p class="muted">ยังไม่มีนักเรียน เพิ่มได้ที่ด้านล่าง</p>`; }
@@ -531,8 +584,10 @@ function renderDashboard(){ const {students,lessons,progress}=dashState;
         <span class="tag">${esc(s.username)}</span></span>
       <span class="acts">
         <button class="mini" data-a="pw">🔑 ตั้งรหัสใหม่</button>
+        <button class="mini" data-a="reset">♻️ ล้างผล</button>
         <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
     li.querySelector('[data-a="pw"]').onclick=()=>resetStudentPw(s);
+    li.querySelector('[data-a="reset"]').onclick=()=>resetStudentProgress(s);
     li.querySelector('[data-a="del"]').onclick=()=>removeStudent(s);
     ul.appendChild(li); }); }
 
@@ -555,6 +610,89 @@ async function removeStudent(s){ if(!confirm(`ลบนักเรียน "${
   loading(true,"กำลังลบ...");
   try{ await api("deleteStudent",{username:s.username}); loading(false); toast("ลบนักเรียนแล้ว","success"); goDashboard(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ล้างความก้าวหน้าของนักเรียนคนเดียว (ทุกบท) */
+async function resetStudentProgress(s){
+  if(!confirm(`ล้างความก้าวหน้าทั้งหมดของ "${s.displayName||s.username}"?\n(ดาวและจำนวนคำที่อ่านแล้วจะกลับเป็นศูนย์ ย้อนกลับไม่ได้)`)) return;
+  loading(true,"กำลังล้างความก้าวหน้า...");
+  try{ await api("resetStudentProgress",{username:s.username}); loading(false);
+    toast("ล้างความก้าวหน้าแล้ว","success"); goDashboard(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== เสียงอ่านของนักเรียน (แดชบอร์ดครู) ===== */
+function renderRecordings(){
+  const sel=$("rec-filter-student"); const recs=dashState.recordings||[];
+  // เติมรายชื่อนักเรียนในตัวกรอง (คงค่าที่เลือกไว้)
+  const keep=sel.value;
+  let opts=`<option value="">— นักเรียนทุกคน —</option>`;
+  dashState.students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+  sel.innerHTML=opts; sel.value=keep;
+
+  const titleMap={}; dashState.lessons.forEach(l=>titleMap[l.id]=l.title);
+  const filtered=sel.value?recs.filter(r=>String(r.username).trim()===sel.value):recs;
+
+  const ul=$("rec-list"); ul.innerHTML="";
+  if(!filtered.length){ ul.innerHTML=`<li class="muted">ยังไม่มีเสียงอ่านที่นักเรียนส่งมา</li>`; return; }
+  filtered.forEach(r=>{ const li=document.createElement("li"); li.className="row";
+    const lessonTitle=titleMap[r.lessonId]||"-";
+    let when="-"; try{ when=new Date(r.createdAt).toLocaleString("th-TH"); }catch(_){}
+    li.innerHTML=`<span class="main"><span>
+        <strong class="rec-line">📖 ${esc(r.wordText||"-")}</strong>
+        <div class="rec-line">👧 ${esc(r.displayName||r.username)} · บท: ${esc(lessonTitle)}</div>
+        <div class="rec-line muted">🕒 ${esc(when)}</div></span></span>
+      <span class="acts">
+        <button class="mini" data-a="play">▶️ ฟัง</button>
+        <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
+    li.querySelector('[data-a="play"]').onclick=(e)=>playRecording(r,e.currentTarget);
+    li.querySelector('[data-a="del"]').onclick=()=>deleteRecordingItem(r);
+    ul.appendChild(li); }); }
+
+let recPlayer=null;
+async function playRecording(r,btn){
+  const old=btn.textContent; btn.disabled=true; btn.textContent="⏳ กำลังโหลด...";
+  try{ if(recPlayer){ try{recPlayer.pause();}catch(_){} }
+    const src=await resolveAudioSrc(r.fileId);   // fileId ล้วน -> ดึงไบต์ผ่าน API
+    recPlayer=new Audio(src); await recPlayer.play();
+    btn.textContent="🔊 กำลังเล่น";
+    recPlayer.onended=()=>{ btn.disabled=false; btn.textContent=old; };
+  }catch(err){ toast("เล่นเสียงไม่ได้: "+err.message,"error"); btn.disabled=false; btn.textContent=old; } }
+
+async function deleteRecordingItem(r){
+  if(!confirm(`ลบเสียงอ่านคำว่า "${r.wordText||""}" ของ ${r.displayName||r.username}?`)) return;
+  loading(true,"กำลังลบเสียง...");
+  try{ await api("deleteRecording",{id:r.id}); loading(false);
+    dashState.recordings=(dashState.recordings||[]).filter(x=>x.id!==r.id);
+    $("dash-stats").querySelectorAll(".stat")[2].querySelector(".num").textContent=(dashState.recordings||[]).length;
+    renderRecordings(); toast("ลบเสียงแล้ว","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+$("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return;
+  loading(true,"กำลังโหลดเสียงอ่าน...");
+  try{ dashState.recordings=await api("getRecordings"); loading(false);
+    $("dash-stats").querySelectorAll(".stat")[2].querySelector(".num").textContent=(dashState.recordings||[]).length;
+    renderRecordings(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+$("rec-filter-student").addEventListener("change",renderRecordings);
+
+/* ===== เปลี่ยนรหัสผ่านครู + เริ่มเทอมใหม่ ===== */
+$("cp-save").addEventListener("click",async()=>{
+  const oldPassword=$("cp-old").value, newPassword=$("cp-new").value;
+  if(!oldPassword||!newPassword) return toast("กรอกรหัสผ่านเดิมและรหัสผ่านใหม่","error");
+  if(newPassword.length<6) return toast("รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร","error");
+  loading(true,"กำลังเปลี่ยนรหัสผ่าน...");
+  try{ const res=await api("changeMyPassword",{oldPassword,newPassword}); loading(false);
+    if(res&&res.token){ state.token=res.token; localStorage.setItem("session",JSON.stringify(state)); }
+    $("cp-old").value="";$("cp-new").value="";
+    toast("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว 🔐","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+$("reset-term").addEventListener("click",async()=>{
+  if(!confirm("ล้างความก้าวหน้าของนักเรียนทุกคน ทุกบท?\nใช้เมื่อขึ้นเทอมใหม่ — การลบนี้ย้อนกลับไม่ได้")) return;
+  if(!confirm("ยืนยันอีกครั้ง: ดาวและจำนวนคำที่อ่านแล้วของนักเรียนทุกคนจะหายทั้งหมด ต้องการดำเนินการต่อหรือไม่?")) return;
+  loading(true,"กำลังล้างความก้าวหน้าทั้งหมด...");
+  try{ await api("resetAllProgress"); loading(false);
+    toast("ล้างความก้าวหน้าของนักเรียนทุกคนแล้ว ♻️","success"); goDashboard(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
 
 /* ===== หน้าครู: จัดการบทเรียนและคำ ===== */
 $("nav-admin").addEventListener("click",goAdmin);
@@ -658,18 +796,27 @@ async function deleteWord(w){ if(!confirm(`ลบคำว่า "${w.text}"?`))
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 /* ===== อัดเสียงครู (MediaRecorder) ===== */
-let rec={mr:null,chunks:[],blob:null,stream:null,word:null};
+let rec={mr:null,chunks:[],blob:null,stream:null,word:null,mode:"teacher"};
 function pickAudioMime(){ if(!window.MediaRecorder)return"";
   return ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"].find(m=>{try{return MediaRecorder.isTypeSupported(m)}catch(_){return false}})||""; }
 function blobToBase64(blob){ return new Promise((res,rej)=>{ const r=new FileReader();
   r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
 
-function openRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word};
+function openRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word,mode:"teacher"};
   $("rec-title").textContent="อัด/เพิ่มเสียงคำว่า: "+word.text;
   $("rec-status").textContent=word.audioUrl?"มีเสียงอยู่แล้ว — อัดใหม่หรือเลือกไฟล์เพื่อแทนที่ได้":"พร้อมอัด";
   $("rec-file").value="";
   const a=$("rec-audio"); a.src=""; a.style.display="none";
   if(word.audioUrl){ resolveAudioSrc(word.audioUrl).then(src=>{a.src=src;a.style.display="block";}).catch(()=>{}); }
+  $("rec-start").style.display="inline-flex";$("rec-stop").style.display="none";$("rec-save").style.display="none";
+  $("rec-overlay").style.display="flex"; }
+
+/* นักเรียนอัดเสียงอ่านคำเอง แล้วส่งให้ครูฟัง */
+function openStudentRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word,mode:"student"};
+  $("rec-title").textContent="อ่านคำว่า: "+word.text+" ให้คุณครูฟัง";
+  $("rec-status").textContent="กด 🎙️ เริ่มอัด แล้วอ่านออกเสียงคำนี้ จากนั้นฟังทวนและกดส่ง";
+  $("rec-file").value="";
+  const a=$("rec-audio"); a.src=""; a.style.display="none";
   $("rec-start").style.display="inline-flex";$("rec-stop").style.display="none";$("rec-save").style.display="none";
   $("rec-overlay").style.display="flex"; }
 
@@ -699,7 +846,17 @@ $("rec-start").addEventListener("click",async()=>{
 $("rec-stop").addEventListener("click",()=>{ if(rec.mr&&rec.mr.state!=="inactive")rec.mr.stop();
   $("rec-stop").style.display="none"; $("rec-start").style.display="inline-flex"; });
 
-$("rec-save").addEventListener("click",async()=>{ if(!rec.blob)return; loading(true,"กำลังบันทึกเสียง...");
+$("rec-save").addEventListener("click",async()=>{ if(!rec.blob)return;
+  if(rec.mode==="student"){
+    loading(true,"กำลังส่งเสียงให้คุณครู...");
+    try{ const b64=await blobToBase64(rec.blob);
+      await api("submitRecording",{lessonId:currentLessonId,wordId:rec.word.id,
+        wordText:rec.word.text,dataBase64:b64,mimeType:rec.blob.type,name:"read_"+rec.word.id});
+      loading(false); toast("ส่งเสียงอ่านให้คุณครูแล้ว 🎤","success"); closeRec(); }
+    catch(err){ loading(false); toast("ส่งเสียงไม่สำเร็จ: "+err.message,"error"); }
+    return;
+  }
+  loading(true,"กำลังบันทึกเสียง...");
   try{ const b64=await blobToBase64(rec.blob);
     const up=await api("uploadAudio",{dataBase64:b64,mimeType:rec.blob.type,name:"voice_"+rec.word.id});
     await api("updateWord",{id:rec.word.id,audioUrl:up.url}); loading(false);
