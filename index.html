@@ -49,7 +49,7 @@ img{display:block;max-width:100%}
 .menu-btn:hover{box-shadow:var(--shadow-h)}
 .menu-btn:active{transform:translateY(2px) scale(.97)}
 .menu-btn:focus-visible{outline:4px solid #bfe7ff;outline-offset:2px}
-.menu-panel{position:absolute;top:calc(100% + 12px);right:0;background:#fff;border-radius:var(--radius-lg);
+.menu-panel{position:absolute;top:calc(100% + 12px);left:0;background:#fff;border-radius:var(--radius-lg);
   box-shadow:var(--shadow-h);padding:10px;min-width:268px;max-width:86vw;z-index:80;display:none;flex-direction:column;gap:6px}
 .menu-panel.open{display:flex;animation:menuIn .18s}
 @keyframes menuIn{from{opacity:0;transform:translateY(-10px)}}
@@ -183,11 +183,11 @@ textarea{resize:vertical;min-height:150px}
 <body>
 
 <header class="appbar" id="appbar" style="display:none">
-  <span class="brand"><img class="brand-logo" src="https://i.ibb.co/m72jfbM/image.png" alt="ตราโรงเรียน"> อ่านสนุก <span style="font-size:1rem;color:var(--ink-soft)">ป.5</span></span>
   <div class="menu-wrap" id="menu-wrap">
     <button class="menu-btn" id="menu-btn" aria-label="เปิดเมนู" aria-haspopup="true" aria-expanded="false">☰</button>
     <nav class="menu-panel" id="menu-panel" role="menu"></nav>
   </div>
+  <span class="brand"><img class="brand-logo" src="https://i.ibb.co/m72jfbM/image.png" alt="ตราโรงเรียน"> อ่านสนุก <span style="font-size:1rem;color:var(--ink-soft)">ป.5</span></span>
 </header>
 
 <!-- เข้าสู่ระบบ -->
