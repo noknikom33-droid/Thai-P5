@@ -4,12 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>อ่านสนุก ป.5</title>
-
-<!-- ฟอนต์ไทยน่ารัก อ่านง่าย -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thai+2:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
-
 <style>
 /* ============================================================
    สไตล์ทั้งหมด (ออกแบบเพื่อนักเรียน ป.5: อ่านง่าย ปุ่มใหญ่ สดใส)
@@ -17,7 +14,7 @@
 :root{
   --bg-top:#eef6ff; --bg-bottom:#fef3ff;
   --teal:#16a3a3; --teal-dark:#0f7d7d;
-  --sky:#3b9df0; --sun:#ffcf3f;
+  --sky:#3b9df0; --sun:#ffcf3f; --purple:#8b6cd9;
   --ink:#283149; --ink-soft:#6c7390;
   --white:#fff; --danger:#ff5d5d;
   --radius:18px; --radius-lg:26px;
@@ -25,20 +22,13 @@
   --shadow-h:0 12px 30px rgba(40,49,73,.2);
 }
 *{box-sizing:border-box}
-body{
-  margin:0; min-height:100vh; color:var(--ink);
-  font-family:"Sarabun",sans-serif;
-  background:linear-gradient(160deg,var(--bg-top),var(--bg-bottom)) fixed;
-  -webkit-tap-highlight-color:transparent;
-}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:"Sarabun",sans-serif;
+  background:linear-gradient(160deg,var(--bg-top),var(--bg-bottom)) fixed;-webkit-tap-highlight-color:transparent}
 h1,h2,h3,.display{font-family:"Baloo Thai 2",cursive;font-weight:700;line-height:1.2;margin:0}
 button{font-family:inherit;cursor:pointer;border:none}
 img{display:block;max-width:100%}
-
-/* ปุ่ม */
 .btn{font-family:"Baloo Thai 2",cursive;font-size:1.12rem;padding:13px 24px;border-radius:var(--radius);
-  background:var(--teal);color:#fff;box-shadow:var(--shadow);min-height:50px;
-  transition:transform .12s,box-shadow .12s}
+  background:var(--teal);color:#fff;box-shadow:var(--shadow);min-height:50px;transition:transform .12s,box-shadow .12s}
 .btn:hover{box-shadow:var(--shadow-h)}
 .btn:active{transform:translateY(2px) scale(.98)}
 .btn--ghost{background:#fff;color:var(--teal-dark)}
@@ -46,15 +36,14 @@ img{display:block;max-width:100%}
 .btn--danger{background:#fff0f0;color:var(--danger)}
 .btn:focus-visible{outline:4px solid #bfe7ff;outline-offset:2px}
 
-/* แถบหัว */
 .appbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding:14px 20px;background:rgba(255,255,255,.72);backdrop-filter:blur(6px);position:sticky;top:0;z-index:50}
 .appbar .brand{font-size:1.5rem;color:var(--teal-dark);display:flex;align-items:center;gap:8px}
 .appbar .nav{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.container{max-width:1080px;margin:0 auto;padding:22px 16px 60px}
+.container{max-width:1080px;margin:0 auto;padding:22px 16px 70px}
 .view{display:none}
 
-/* ---------- หน้าเข้าสู่ระบบ ---------- */
+/* หน้าเข้าสู่ระบบ */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:32px 28px}
 .login-card{width:100%;max-width:420px;text-align:center}
@@ -63,17 +52,15 @@ img{display:block;max-width:100%}
 .login-card .sub{color:var(--ink-soft);margin:0 0 22px}
 .field{text-align:left;margin-bottom:15px}
 .field label{display:block;font-weight:600;margin-bottom:6px}
-.field input,.field textarea,.field select{
-  width:100%;font-family:inherit;font-size:1.08rem;padding:12px 15px;
+.field input,.field textarea,.field select{width:100%;font-family:inherit;font-size:1.08rem;padding:12px 15px;
   border:2px solid #e2e6f3;border-radius:var(--radius);background:#f9faff}
 .field input:focus,.field textarea:focus{outline:none;border-color:var(--teal)}
 .link-btn{background:none;color:var(--teal-dark);font-size:1rem;text-decoration:underline;padding:10px;margin-top:6px}
 
-/* ---------- หน้าบทเรียน (การ์ดรูปปกแนวนอน) ---------- */
+/* หน้าบทเรียน (การ์ดรูปปกแนวนอน) */
 .greeting{font-size:1.5rem;margin-bottom:4px}
 .lesson-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:18px}
-.lesson-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;
-  text-align:left;padding:0;transition:transform .15s,box-shadow .15s}
+.lesson-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;text-align:left;padding:0;transition:transform .15s,box-shadow .15s}
 .lesson-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h)}
 .lesson-card:active{transform:scale(.99)}
 .cover{width:100%;aspect-ratio:16/9;object-fit:cover;background:#dfe7f5}
@@ -81,8 +68,10 @@ img{display:block;max-width:100%}
 .lesson-card .body{padding:16px 18px}
 .lesson-card .body h3{font-size:1.4rem;color:var(--ink)}
 .lesson-card .body .meta{color:var(--ink-soft);font-size:.95rem;margin-top:4px}
+.minibar{background:#e3e8f5;border-radius:999px;height:10px;overflow:hidden;margin-top:8px}
+.minibar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
 
-/* ---------- หน้าคำในบทเรียน ---------- */
+/* หน้าคำในบทเรียน */
 .progress-track{background:#e3e8f5;border-radius:999px;height:20px;overflow:hidden;margin-top:6px}
 .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--sun),#ff9f1c);transition:width .4s}
 .progress-text{text-align:center;color:var(--ink-soft);font-weight:600;margin:8px 0}
@@ -90,28 +79,25 @@ img{display:block;max-width:100%}
 .mascot-row .chick{font-size:2.8rem}
 .bubble{background:#fff;font-size:1.15rem;padding:11px 18px;border-radius:16px 16px 16px 4px;box-shadow:var(--shadow)}
 .word-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
-.word-card{position:relative;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);
-  padding:28px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;transition:transform .15s}
+.word-card{position:relative;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:28px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;transition:transform .15s}
 .word-card.read{background:#fffdf3;border:3px solid var(--sun)}
 .word-text{font-family:"Baloo Thai 2",cursive;font-size:2.6rem;font-weight:700;text-align:center;word-break:break-word}
 .star{position:absolute;top:8px;right:12px;font-size:1.5rem;opacity:0;transform:scale(.4);transition:.3s}
 .word-card.read .star{opacity:1;transform:scale(1)}
 .pop{animation:pop .3s}
 @keyframes pop{40%{transform:scale(1.07)}}
-.speaker{width:70px;height:70px;border-radius:50%;background:var(--sky);color:#fff;font-size:1.9rem;
-  display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:transform .12s}
+.speaker{width:70px;height:70px;border-radius:50%;background:var(--sky);color:#fff;font-size:1.9rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:transform .12s}
 .speaker:hover{background:#2b86d6}
 .speaker:active{transform:scale(.9)}
 .speaker:focus-visible{outline:4px solid #bfe7ff;outline-offset:3px}
 
-/* ---------- หน้าครู ---------- */
+/* หน้าครู / แดชบอร์ด */
 .section{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:22px;margin-bottom:22px}
 .section h2{color:var(--teal-dark);margin-bottom:14px}
 .inline{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .inline .field{margin:0;flex:1 1 180px}
 .list{list-style:none;padding:0;margin:14px 0 0}
-.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  padding:12px 14px;border-radius:var(--radius);background:#f7f9ff;margin-bottom:10px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:var(--radius);background:#f7f9ff;margin-bottom:10px}
 .row.active{background:#e7fbfb;border:2px solid var(--teal)}
 .row .main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .row .thumb{width:84px;height:48px;object-fit:cover;border-radius:8px;background:#dfe7f5}
@@ -121,20 +107,41 @@ img{display:block;max-width:100%}
 .mini:active{transform:translateY(2px)}
 .mini:disabled{opacity:.4;cursor:not-allowed}
 .mini--danger{background:#fff0f0;color:var(--danger)}
+.tag{font-size:.8rem;background:#e7fbfb;color:var(--teal-dark);padding:2px 8px;border-radius:999px}
 .muted{color:var(--ink-soft)}
 .hint{color:var(--ink-soft);font-size:.92rem;margin:4px 0 10px}
 textarea{resize:vertical;min-height:150px}
 .preview{margin-top:10px;display:none}
 .preview img{width:220px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;box-shadow:var(--shadow)}
 
-/* ---------- แจ้งเตือน / โหลด / ฉลอง ---------- */
-#toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;
-  z-index:9999;width:calc(100% - 40px);max-width:440px}
+/* การ์ดสถิติ */
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.stat{flex:1 1 150px;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px 20px}
+.stat .num{font-family:"Baloo Thai 2",cursive;font-size:2.2rem;color:var(--teal-dark)}
+.stat .lbl{color:var(--ink-soft)}
+
+/* ตารางความก้าวหน้า */
+.ptable{overflow-x:auto;margin-top:6px}
+.ptable table{border-collapse:collapse;min-width:100%}
+.ptable th,.ptable td{padding:10px 12px;text-align:center;border-bottom:1px solid #eef0f7;white-space:nowrap;font-size:.95rem}
+.ptable th{background:#f7f9ff;color:var(--ink-soft);position:sticky;top:0}
+.ptable td.sticky-name,.ptable th:first-child{text-align:left}
+.ptable td.sticky-name{font-weight:600}
+.cellbar{background:#e3e8f5;border-radius:999px;height:8px;width:70px;margin:0 auto 3px;overflow:hidden}
+.cellbar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
+
+/* recorder overlay */
+.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9996;background:rgba(40,49,73,.45);padding:18px}
+.rec-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:26px;width:100%;max-width:440px;text-align:center}
+.rec-box h3{color:var(--teal-dark);margin-bottom:6px}
+.rec-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+
+/* แจ้งเตือน / โหลด / ฉลอง */
+#toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;z-index:9999;width:calc(100% - 40px);max-width:440px}
 .toast{background:var(--ink);color:#fff;padding:13px 18px;border-radius:var(--radius);box-shadow:var(--shadow);animation:up .35s}
 .toast.success{background:#2e9e6b}.toast.error{background:var(--danger)}.toast.out{opacity:0;transition:.4s}
 @keyframes up{from{transform:translateY(20px);opacity:0}}
-#loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9998;
-  background:rgba(255,255,255,.7);backdrop-filter:blur(3px)}
+#loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9998;background:rgba(255,255,255,.7);backdrop-filter:blur(3px)}
 #loading .box{background:#fff;border-radius:var(--radius-lg);padding:28px 38px;box-shadow:var(--shadow);text-align:center}
 #loading .chick{font-size:3rem;animation:bounce .8s infinite}
 @keyframes bounce{50%{transform:translateY(-12px)}}
@@ -142,27 +149,23 @@ textarea{resize:vertical;min-height:150px}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:9997;overflow:hidden}
 .confetti{position:absolute;top:-40px;animation:fall 2.6s ease-in forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:0}}
-
-@media(max-width:600px){
-  .appbar .brand{font-size:1.3rem}.word-text{font-size:2.2rem}
-  .lesson-grid{grid-template-columns:1fr 1fr;gap:12px}
-}
+@media(max-width:600px){.appbar .brand{font-size:1.3rem}.word-text{font-size:2.2rem}.lesson-grid{grid-template-columns:1fr 1fr;gap:12px}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition:none!important}}
 </style>
 </head>
 <body>
 
-<!-- ===== แถบหัว (ซ่อนตอนยังไม่ล็อกอิน) ===== -->
 <header class="appbar" id="appbar" style="display:none">
   <span class="brand">🐥 อ่านสนุก <span style="font-size:1rem;color:var(--ink-soft)">ป.5</span></span>
   <nav class="nav">
+    <button class="btn btn--ghost" id="nav-dashboard" style="display:none">📊 แดชบอร์ด</button>
     <button class="btn btn--ghost" id="nav-lessons">📚 บทเรียน</button>
-    <button class="btn btn--sun"   id="nav-admin" style="display:none">⚙️ หน้าครู</button>
+    <button class="btn btn--sun"   id="nav-admin" style="display:none">⚙️ จัดการบทเรียน</button>
     <button class="btn btn--ghost" id="nav-logout">ออกจากระบบ</button>
   </nav>
 </header>
 
-<!-- ===== หน้าเข้าสู่ระบบ ===== -->
+<!-- เข้าสู่ระบบ -->
 <section id="view-login" class="view login-wrap">
   <div class="card login-card">
     <div class="mascot">🐥</div>
@@ -170,51 +173,72 @@ textarea{resize:vertical;min-height:150px}
     <p class="sub">ฝึกอ่านคำภาษาไทย สำหรับชั้น ป.5</p>
     <form id="auth-form">
       <h2 class="display" id="auth-title" style="margin-bottom:16px">เข้าสู่ระบบ</h2>
-      <div class="field">
-        <label for="username">ชื่อผู้ใช้</label>
-        <input id="username" type="text" placeholder="เช่น ครู หรือ ชื่อเล่น" autocomplete="username">
-      </div>
-      <div class="field">
-        <label for="password">รหัสผ่าน</label>
-        <input id="password" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="current-password">
-      </div>
+      <div class="field"><label for="username">ชื่อผู้ใช้</label>
+        <input id="username" type="text" placeholder="เช่น admin หรือชื่อนักเรียน" autocomplete="username"></div>
+      <div class="field"><label for="password">รหัสผ่าน</label>
+        <input id="password" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"></div>
       <button class="btn" id="auth-submit" type="submit" style="width:100%">เข้าสู่ระบบ</button>
     </form>
     <button class="link-btn" id="auth-toggle">ยังไม่มีบัญชี? สมัครสมาชิก</button>
   </div>
 </section>
 
-<!-- ===== หน้าเลือกบทเรียน ===== -->
+<!-- หน้านักเรียน: เลือกบทเรียน -->
 <section id="view-lessons" class="view">
   <div class="container">
     <h2 class="greeting display" id="greeting">สวัสดี 👋</h2>
-    <p class="muted">เลือกบทเรียนที่อยากฝึกอ่านได้เลย</p>
+    <p class="muted" id="lessons-subtitle">เลือกบทเรียนที่อยากฝึกอ่านได้เลย</p>
     <div id="lesson-grid" class="lesson-grid"></div>
     <div id="lessons-empty" class="muted" style="display:none;text-align:center;padding:40px">
-      ยังไม่มีบทเรียน 🐣 ถ้าเป็นคุณครู เข้า "หน้าครู" เพื่อเพิ่มบทเรียนได้เลย
+      ยังไม่มีบทเรียน 🐣 ถ้าเป็นคุณครู เข้า "จัดการบทเรียน" เพื่อเพิ่มบทเรียนได้เลย
     </div>
   </div>
 </section>
 
-<!-- ===== หน้าคำในบทเรียน ===== -->
+<!-- หน้าคำในบทเรียน -->
 <section id="view-lesson" class="view">
   <div class="container">
-    <button class="mini" id="back-lessons" style="margin-bottom:14px">⬅️ กลับไปบทเรียน</button>
+    <button class="mini" id="back-lessons" style="margin-bottom:14px">⬅️ กลับ</button>
     <h2 class="display" id="lesson-title"></h2>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
     <p class="progress-text" id="progress-text">อ่านแล้ว 0 / 0 คำ</p>
-    <div class="mascot-row">
-      <span class="chick">🐥</span>
-      <span class="bubble" id="bubble">กดปุ่มลำโพงเพื่อฟังเสียงนะ!</span>
-    </div>
+    <div class="mascot-row"><span class="chick">🐥</span>
+      <span class="bubble" id="bubble">กดปุ่มลำโพงเพื่อฟังเสียงนะ!</span></div>
     <div id="word-grid" class="word-grid"></div>
   </div>
 </section>
 
-<!-- ===== หน้าครู ===== -->
+<!-- หน้าครู: แดชบอร์ด + จัดการนักเรียน -->
+<section id="view-dashboard" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:12px">📊 แดชบอร์ดครู</h2>
+    <div class="stats" id="dash-stats"></div>
+
+    <div class="section">
+      <h2>ความก้าวหน้าของนักเรียน</h2>
+      <p class="hint">ตัวเลขคือจำนวนคำที่อ่านแล้ว / คำทั้งหมดในแต่ละบท · ช่อง "บทล่าสุด" คือบทที่เรียนล่าสุด</p>
+      <div id="dash-progress"></div>
+    </div>
+
+    <div class="section">
+      <h2>เพิ่ม / จัดการนักเรียน</h2>
+      <div class="inline">
+        <div class="field"><label for="ds-username">ชื่อผู้ใช้ (สำหรับเข้าระบบ)</label>
+          <input id="ds-username" type="text" placeholder="เช่น dek01"></div>
+        <div class="field"><label for="ds-name">ชื่อที่แสดง</label>
+          <input id="ds-name" type="text" placeholder="เช่น น้องฟ้า"></div>
+        <div class="field" style="flex:0 0 160px"><label for="ds-password">รหัสผ่าน</label>
+          <input id="ds-password" type="text" placeholder="อย่างน้อย 4 ตัว"></div>
+      </div>
+      <button class="btn" id="ds-add" style="margin-top:12px">➕ เพิ่มนักเรียน</button>
+      <ul id="student-list" class="list"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: จัดการบทเรียนและคำ -->
 <section id="view-admin" class="view">
   <div class="container">
-    <!-- เพิ่มบทเรียน -->
     <div class="section">
       <h2>เพิ่มบทเรียนใหม่</h2>
       <div class="inline">
@@ -225,7 +249,7 @@ textarea{resize:vertical;min-height:150px}
       </div>
       <div class="field" style="margin-top:12px">
         <label>รูปปกบทเรียน (แนวนอน 16:9)</label>
-        <p class="hint">เลือกได้ 2 วิธี — อัปโหลดรูปจากเครื่อง (ระบบจะเก็บลง Google Drive ให้) หรือวางลิงก์/ไอดีรูปจาก Drive</p>
+        <p class="hint">อัปโหลดรูปจากเครื่อง (เก็บลง Google Drive ให้อัตโนมัติ) หรือวางลิงก์/ไอดีรูปจาก Drive</p>
         <input id="a-cover-file" type="file" accept="image/*">
         <input id="a-cover-link" type="text" placeholder="หรือวางลิงก์ Drive / ไอดีรูป" style="margin-top:8px">
         <div class="preview" id="a-preview"><img id="a-preview-img" alt="ตัวอย่างรูปปก"></div>
@@ -233,15 +257,14 @@ textarea{resize:vertical;min-height:150px}
       <button class="btn" id="a-add-lesson" style="margin-top:14px">➕ เพิ่มบทเรียน</button>
     </div>
 
-    <!-- รายการบทเรียน -->
     <div class="section">
       <h2>บทเรียนทั้งหมด</h2>
       <ul id="admin-lessons" class="list"></ul>
     </div>
 
-    <!-- จัดการคำ -->
     <div class="section" id="word-panel" style="display:none">
       <h2 id="word-panel-title">คำในบทเรียน</h2>
+      <p class="hint">เพิ่มคำได้โดยพิมพ์ทีละบรรทัด จากนั้นกด 🎙️ ที่คำแต่ละคำเพื่ออัดเสียงครู</p>
       <ul id="admin-words" class="list"></ul>
       <h3 class="display" style="margin-top:16px">วางหลายคำพร้อมกัน</h3>
       <p class="hint">พิมพ์หรือวางคำ <strong>บรรทัดละ 1 คำ</strong> แล้วกดเพิ่ม</p>
@@ -251,35 +274,40 @@ textarea{resize:vertical;min-height:150px}
   </div>
 </section>
 
-<!-- โครงสำหรับแจ้งเตือน/โหลด/ฉลอง -->
+<!-- กล่องอัดเสียง -->
+<div id="rec-overlay" class="overlay">
+  <div class="rec-box">
+    <h3 id="rec-title">อัดเสียง</h3>
+    <p class="hint">กด "เริ่มอัด" แล้วออกเสียงคำให้ชัด จากนั้นกด "หยุด" เพื่อฟังและบันทึก</p>
+    <div id="rec-status" class="muted">พร้อมอัด</div>
+    <audio id="rec-audio" controls style="display:none;width:100%;margin:10px 0"></audio>
+    <div class="rec-actions">
+      <button class="btn" id="rec-start">🎙️ เริ่มอัด</button>
+      <button class="btn btn--danger" id="rec-stop" style="display:none">⏹️ หยุด</button>
+      <button class="btn" id="rec-save" style="display:none">💾 บันทึกเสียงนี้</button>
+      <button class="btn btn--ghost" id="rec-close">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 <div id="loading"><div class="box"><div class="chick">🐥</div><p id="loading-text">กำลังโหลด...</p></div></div>
 <div id="confetti"></div>
 
 <script>
-/* ============================================================
-   ⭐ ตั้งค่าสำคัญ: URL ของ API (Google Apps Script)
-   ถ้าสร้าง deployment ใหม่จน URL เปลี่ยน ให้แก้ตรงนี้
-   ============================================================ */
+/* ⭐ URL ของ API (Google Apps Script) — แก้ตรงนี้ถ้า URL เปลี่ยน */
 const API_URL = "https://script.google.com/macros/s/AKfycbw9RGAuhy_4HSfP35_LJ6LKDQAze_QKe_edspr_Yp4gNlwQB5rvmQH3z-hnMKYqt9i8QA/exec";
 
-/* ---------- ตัวแปรสถานะ ---------- */
 let state = { user: null, token: null };
-let adminLessonId = null;   // บทเรียนที่ครูกำลังจัดการคำ
-let pendingCoverUrl = "";   // ลิงก์รูปปกที่เตรียมไว้ตอนเพิ่มบทเรียน
+let adminLessonId = null, pendingCoverUrl = "";
+let dashState = null;
 
-/* ============================================================
-   เรียก API — ใช้ POST แบบ text/plain เพื่อเลี่ยงปัญหา CORS
-   (ไม่กำหนด Content-Type จึงไม่เกิด preflight กับ Apps Script)
-   ============================================================ */
+/* เรียก API ผ่าน POST แบบ text/plain เพื่อเลี่ยงปัญหา CORS */
 async function api(action, params = {}) {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(Object.assign({ action, token: state.token }, params))
-  });
+  const res = await fetch(API_URL, { method: "POST",
+    body: JSON.stringify(Object.assign({ action, token: state.token }, params)) });
   const data = await res.json();
   if (!data.ok) {
-    // ถ้าโทเคนหมดอายุ/ไม่ถูกต้อง ให้กลับไปหน้าเข้าสู่ระบบอย่างนุ่มนวล
     if (data.error && (data.error.indexOf("เข้าสู่ระบบ") >= 0 || data.error.indexOf("ไม่พบบัญชี") >= 0)) {
       localStorage.removeItem("session"); state = { user: null, token: null };
       $("appbar").style.display = "none"; show("view-login");
@@ -289,396 +317,345 @@ async function api(action, params = {}) {
   return data.data;
 }
 
-/* ---------- ตัวช่วยหน้าจอ ---------- */
+/* ตัวช่วยหน้าจอ */
 const $ = (id) => document.getElementById(id);
-function show(view) {
-  document.querySelectorAll(".view").forEach(v => v.style.display = "none");
-  $(view).style.display = view === "view-login" ? "flex" : "block";
-}
-function toast(msg, type = "info") {
-  const box = $("toasts");
-  const el = document.createElement("div");
-  el.className = "toast " + (type === "info" ? "" : type);
-  el.textContent = (type === "success" ? "✅ " : type === "error" ? "😢 " : "💬 ") + msg;
-  box.appendChild(el);
-  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 400); }, 3500);
-}
-function loading(on, text = "กำลังโหลด...") {
-  $("loading-text").textContent = text;
-  $("loading").style.display = on ? "flex" : "none";
-}
-function celebrate() {
-  const e = ["🎉","⭐","🎈","🌟","🥳","✨","🏆"], layer = $("confetti");
-  for (let i = 0; i < 24; i++) {
-    const s = document.createElement("span");
-    s.className = "confetti"; s.textContent = e[Math.floor(Math.random()*e.length)];
-    s.style.left = Math.random()*100 + "vw";
-    s.style.animationDelay = Math.random()*0.6 + "s";
-    s.style.fontSize = (20 + Math.random()*24) + "px";
-    layer.appendChild(s); setTimeout(() => s.remove(), 3000);
-  }
-}
+function isTeacher(){ return state.user && state.user.role === "teacher"; }
+function show(view){ document.querySelectorAll(".view").forEach(v=>v.style.display="none");
+  $(view).style.display = view==="view-login" ? "flex" : "block"; }
+function toast(msg, type="info"){ const box=$("toasts"); const el=document.createElement("div");
+  el.className="toast "+(type==="info"?"":type);
+  el.textContent=(type==="success"?"✅ ":type==="error"?"😢 ":"💬 ")+msg; box.appendChild(el);
+  setTimeout(()=>{el.classList.add("out");setTimeout(()=>el.remove(),400);},3500); }
+function loading(on, text="กำลังโหลด..."){ $("loading-text").textContent=text; $("loading").style.display=on?"flex":"none"; }
+function celebrate(){ const e=["🎉","⭐","🎈","🌟","🥳","✨","🏆"], layer=$("confetti");
+  for(let i=0;i<24;i++){const s=document.createElement("span");s.className="confetti";
+    s.textContent=e[Math.floor(Math.random()*e.length)];s.style.left=Math.random()*100+"vw";
+    s.style.animationDelay=Math.random()*0.6+"s";s.style.fontSize=(20+Math.random()*24)+"px";
+    layer.appendChild(s);setTimeout(()=>s.remove(),3000);} }
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
-/* ============================================================
-   อ่านออกเสียงภาษาไทย (Web Speech API) + เล่นไฟล์เสียงถ้ามี
-   ============================================================ */
-let voices = [], warnedNoThai = false;
-function loadVoices(){ if("speechSynthesis" in window) voices = speechSynthesis.getVoices(); }
-if ("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+/* อ่านออกเสียง: เล่นไฟล์เสียงครูก่อน ถ้าไม่ได้ใช้เสียงสังเคราะห์ */
+let voices=[], warnedNoThai=false;
+function loadVoices(){ if("speechSynthesis" in window) voices=speechSynthesis.getVoices(); }
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+function speak(text,audioUrl){ if(audioUrl){const a=new Audio(audioUrl);
+    a.play().catch(()=>ttsThai(text)); a.onerror=()=>ttsThai(text); return;} ttsThai(text); }
+function ttsThai(text){ if(!("speechSynthesis" in window)){toast("เครื่องนี้ยังอ่านออกเสียงไม่ได้ แต่ดูคำได้นะ");return;}
+  speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="th-TH"; u.rate=0.9;
+  const thai=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith("th"));
+  if(thai)u.voice=thai; else if(!warnedNoThai){warnedNoThai=true;toast("เครื่องนี้ยังไม่มีเสียงภาษาไทย ครูอัดเสียงเองได้นะ");}
+  speechSynthesis.speak(u); }
 
-function speak(text, audioUrl) {
-  if (audioUrl) {                       // มีไฟล์เสียง -> เล่นไฟล์ก่อน
-    const a = new Audio(audioUrl);
-    a.play().catch(() => ttsThai(text));
-    a.onerror = () => ttsThai(text);
-    return;
-  }
-  ttsThai(text);
-}
-function ttsThai(text) {
-  if (!("speechSynthesis" in window)) { toast("เครื่องนี้ยังอ่านออกเสียงไม่ได้ แต่ดูคำได้นะ"); return; }
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "th-TH"; u.rate = 0.9;
-  const thai = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("th"));
-  if (thai) u.voice = thai;
-  else if (!warnedNoThai){ warnedNoThai = true; toast("เครื่องนี้ยังไม่มีเสียงภาษาไทย ครูเพิ่มไฟล์เสียงได้นะ"); }
-  speechSynthesis.speak(u);
-}
+/* ===== เข้าสู่ระบบ / สมัครสมาชิก ===== */
+let authMode="login";
+$("auth-toggle").addEventListener("click",()=>{ authMode=authMode==="login"?"signup":"login";
+  const s=authMode==="signup";
+  $("auth-title").textContent=s?"สมัครสมาชิกใหม่":"เข้าสู่ระบบ";
+  $("auth-submit").textContent=s?"สมัครสมาชิก":"เข้าสู่ระบบ";
+  $("auth-toggle").textContent=s?"มีบัญชีอยู่แล้ว? เข้าสู่ระบบ":"ยังไม่มีบัญชี? สมัครสมาชิก"; });
 
-/* ============================================================
-   เข้าสู่ระบบ / สมัครสมาชิก
-   ============================================================ */
-let authMode = "login";
-$("auth-toggle").addEventListener("click", () => {
-  authMode = authMode === "login" ? "signup" : "login";
-  const signup = authMode === "signup";
-  $("auth-title").textContent  = signup ? "สมัครสมาชิกใหม่" : "เข้าสู่ระบบ";
-  $("auth-submit").textContent = signup ? "สมัครสมาชิก" : "เข้าสู่ระบบ";
-  $("auth-toggle").textContent = signup ? "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ" : "ยังไม่มีบัญชี? สมัครสมาชิก";
-});
+$("auth-form").addEventListener("submit",async(e)=>{ e.preventDefault();
+  const username=$("username").value.trim(), password=$("password").value;
+  if(!username||!password) return toast("กรอกชื่อผู้ใช้และรหัสผ่านด้วยนะ","error");
+  loading(true,authMode==="login"?"กำลังเข้าสู่ระบบ...":"กำลังสมัครสมาชิก...");
+  try{ const res=authMode==="login"?await api("login",{username,password}):await api("register",{username,password});
+    setSession(res.user,res.token); loading(false); routeHome(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
 
-$("auth-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const username = $("username").value.trim(), password = $("password").value;
-  if (!username || !password) return toast("กรอกชื่อผู้ใช้และรหัสผ่านด้วยนะ", "error");
-  loading(true, authMode === "login" ? "กำลังเข้าสู่ระบบ..." : "กำลังสมัครสมาชิก...");
-  try {
-    const res = authMode === "login"
-      ? await api("login", { username, password })
-      : await api("register", { username, password });
-    setSession(res.user, res.token);
+function setSession(user,token){ state.user=user; state.token=token;
+  localStorage.setItem("session",JSON.stringify(state));
+  $("appbar").style.display="flex";
+  $("nav-dashboard").style.display=isTeacher()?"inline-flex":"none";
+  $("nav-admin").style.display=isTeacher()?"inline-flex":"none";
+  $("greeting").textContent="สวัสดี "+(user.displayName||user.username||"เพื่อน")+" 👋";
+  // หน้านักเรียนกับครูต่างกัน: ครูเห็นหมายเหตุว่ากำลังดูตัวอย่าง
+  $("lessons-subtitle").textContent=isTeacher()
+    ? "โหมดดูตัวอย่างสำหรับครู (แตะบทเรียนเพื่อดูเหมือนที่นักเรียนเห็น)"
+    : "เลือกบทเรียนที่อยากฝึกอ่านได้เลย"; }
+
+function routeHome(){ isTeacher()?goDashboard():goLessons(); }
+
+$("nav-logout").addEventListener("click",()=>{ localStorage.removeItem("session");
+  state={user:null,token:null}; $("appbar").style.display="none"; show("view-login"); });
+
+/* ===== หน้าบทเรียน (นักเรียน) ===== */
+$("nav-lessons").addEventListener("click",goLessons);
+$("back-lessons").addEventListener("click",goLessons);
+
+async function goLessons(){ show("view-lessons"); loading(true,"กำลังเปิดห้องเรียน...");
+  try{ const lessons=await api("getLessons");
+    let myProg=[]; if(state.user.role==="student"){ try{ myProg=await api("getMyProgress"); }catch(_){} }
     loading(false);
-    if (authMode === "signup" && res.user.role === "teacher")
-      toast("ยินดีต้อนรับคุณครู! บัญชีแรกได้สิทธิ์ครูอัตโนมัติ", "success");
-    goLessons();
-  } catch (err) { loading(false); toast(err.message, "error"); }
-});
-
-function setSession(user, token) {
-  state.user = user; state.token = token;
-  localStorage.setItem("session", JSON.stringify(state));
-  $("appbar").style.display = "flex";
-  $("nav-admin").style.display = user.role === "teacher" ? "inline-flex" : "none";
-  $("greeting").textContent = "สวัสดี " + (user.displayName || user.username || "เพื่อน") + " 👋";
-}
-
-$("nav-logout").addEventListener("click", () => {
-  localStorage.removeItem("session");
-  state = { user: null, token: null };
-  $("appbar").style.display = "none";
-  show("view-login");
-});
-
-/* ============================================================
-   หน้าบทเรียน
-   ============================================================ */
-$("nav-lessons").addEventListener("click", goLessons);
-$("back-lessons").addEventListener("click", goLessons);
-
-async function goLessons() {
-  show("view-lessons");
-  loading(true, "กำลังเปิดห้องเรียน...");
-  try {
-    const lessons = await api("getLessons");
-    loading(false);
-    const grid = $("lesson-grid"); grid.innerHTML = "";
-    $("lessons-empty").style.display = lessons.length ? "none" : "block";
-    lessons.forEach(l => {
-      const card = document.createElement("button");
-      card.className = "lesson-card";
-      const cover = l.coverUrl
+    const pmap={}; myProg.forEach(p=>pmap[p.lessonId]=p);
+    const grid=$("lesson-grid"); grid.innerHTML="";
+    $("lessons-empty").style.display=lessons.length?"none":"block";
+    lessons.forEach(l=>{ const card=document.createElement("button"); card.className="lesson-card";
+      const cover=l.coverUrl
         ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>📖</div>'">`
         : `<div class="cover cover--empty">📖</div>`;
-      card.innerHTML = `${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">แตะเพื่อเริ่มอ่าน</div></div>`;
-      card.addEventListener("click", () => openLesson(l));
-      grid.appendChild(card);
-    });
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
+      let progHtml="แตะเพื่อเริ่มอ่าน";
+      const p=pmap[l.id];
+      if(p && p.totalCount){ const pct=Math.round(p.readCount/p.totalCount*100);
+        progHtml=`อ่านแล้ว ${p.readCount}/${p.totalCount} คำ<div class="minibar"><span style="width:${pct}%"></span></div>`; }
+      card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${progHtml}</div></div>`;
+      card.addEventListener("click",()=>openLesson(l)); grid.appendChild(card); });
+  }catch(err){ loading(false); toast(err.message,"error"); } }
 
-/* ============================================================
-   หน้าคำในบทเรียน (ปุ่มลำโพง + ความคืบหน้า)
-   ============================================================ */
-let currentWords = [], readSet = new Set();
+/* ===== หน้าคำในบทเรียน ===== */
+let currentWords=[], readSet=new Set(), currentLessonId=null;
+async function openLesson(lesson){ show("view-lesson"); currentLessonId=lesson.id;
+  $("lesson-title").textContent=lesson.title; loading(true,"กำลังเปิดบทเรียน...");
+  try{ currentWords=await api("getWords",{lessonId:lesson.id}); loading(false);
+    const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
+    const valid=new Set(currentWords.map(w=>w.id));
+    readSet=new Set(saved.filter(id=>valid.has(id)));
+    renderWords(); updateProgress(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
 
-async function openLesson(lesson) {
-  show("view-lesson");
-  $("lesson-title").textContent = lesson.title;
-  loading(true, "กำลังเปิดบทเรียน...");
-  try {
-    currentWords = await api("getWords", { lessonId: lesson.id });
-    loading(false);
-    // โหลดความคืบหน้าที่จำไว้ในเครื่อง
-    const saved = JSON.parse(localStorage.getItem("progress:" + lesson.id) || "[]");
-    const valid = new Set(currentWords.map(w => w.id));
-    readSet = new Set(saved.filter(id => valid.has(id)));
-    renderWords(lesson.id);
-    updateProgress(lesson.id);
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
-
-function renderWords(lessonId) {
-  const grid = $("word-grid"); grid.innerHTML = "";
-  if (!currentWords.length) {
-    grid.innerHTML = `<p class="muted">บทเรียนนี้ยังไม่มีคำ 🐥</p>`; return;
-  }
-  currentWords.forEach(w => {
-    const card = document.createElement("div");
-    card.className = "word-card" + (readSet.has(w.id) ? " read" : "");
-    card.innerHTML = `<span class="star">⭐</span>
-      <div class="word-text">${esc(w.text)}</div>
+function renderWords(){ const grid=$("word-grid"); grid.innerHTML="";
+  if(!currentWords.length){ grid.innerHTML=`<p class="muted">บทเรียนนี้ยังไม่มีคำ 🐥</p>`; return; }
+  currentWords.forEach(w=>{ const card=document.createElement("div");
+    card.className="word-card"+(readSet.has(w.id)?" read":"");
+    card.innerHTML=`<span class="star">⭐</span><div class="word-text">${esc(w.text)}</div>
       <button class="speaker" aria-label="ฟังเสียงคำว่า ${esc(w.text)}">🔊</button>`;
-    card.querySelector(".speaker").addEventListener("click", () => {
-      card.classList.add("pop"); setTimeout(() => card.classList.remove("pop"), 300);
-      speak(w.text, w.audioUrl);
-      if (!readSet.has(w.id)) {
-        readSet.add(w.id); card.classList.add("read");
-        localStorage.setItem("progress:" + lessonId, JSON.stringify([...readSet]));
-        updateProgress(lessonId);
-      }
-    });
-    grid.appendChild(card);
-  });
-}
+    card.querySelector(".speaker").addEventListener("click",()=>{
+      card.classList.add("pop"); setTimeout(()=>card.classList.remove("pop"),300);
+      speak(w.text,w.audioUrl);
+      if(!readSet.has(w.id)){ readSet.add(w.id); card.classList.add("read");
+        localStorage.setItem("progress:"+currentLessonId,JSON.stringify([...readSet]));
+        updateProgress(); saveProgressToServer(); } });
+    grid.appendChild(card); }); }
 
-function updateProgress(lessonId) {
-  const total = currentWords.length, done = readSet.size;
-  $("progress-fill").style.width = (total ? Math.round(done/total*100) : 0) + "%";
-  $("progress-text").textContent = `อ่านแล้ว ${done} / ${total} คำ`;
-  const cheers = ["เก่งมาก!","สู้ ๆ นะ!","อ่านได้แล้ว เยี่ยม!","ลองอีกคำสิ!","หนูทำได้!"];
-  if (done === 0) $("bubble").textContent = "กดปุ่มลำโพงเพื่อฟังเสียงนะ!";
-  else if (done < total) $("bubble").textContent = cheers[Math.floor(Math.random()*cheers.length)];
-  else {
-    $("bubble").textContent = "เก่งมาก! อ่านครบทุกคำแล้ว 🏆";
-    if (!sessionStorage.getItem("cel:" + lessonId)) {
-      sessionStorage.setItem("cel:" + lessonId, "1");
-      celebrate(); toast("ยอดเยี่ยม! อ่านครบทุกคำแล้ว ⭐", "success");
-    }
-  }
-}
+function updateProgress(){ const total=currentWords.length, done=readSet.size;
+  $("progress-fill").style.width=(total?Math.round(done/total*100):0)+"%";
+  $("progress-text").textContent=`อ่านแล้ว ${done} / ${total} คำ`;
+  const cheers=["เก่งมาก!","สู้ ๆ นะ!","อ่านได้แล้ว เยี่ยม!","ลองอีกคำสิ!","หนูทำได้!"];
+  if(done===0)$("bubble").textContent="กดปุ่มลำโพงเพื่อฟังเสียงนะ!";
+  else if(done<total)$("bubble").textContent=cheers[Math.floor(Math.random()*cheers.length)];
+  else{ $("bubble").textContent="เก่งมาก! อ่านครบทุกคำแล้ว 🏆";
+    if(!sessionStorage.getItem("cel:"+currentLessonId)){ sessionStorage.setItem("cel:"+currentLessonId,"1");
+      celebrate(); toast("ยอดเยี่ยม! อ่านครบทุกคำแล้ว ⭐","success"); } } }
 
-/* ============================================================
-   หน้าครู — จัดการบทเรียนและคำ
-   ============================================================ */
-$("nav-admin").addEventListener("click", goAdmin);
+/* บันทึกความก้าวหน้าขึ้นเซิร์ฟเวอร์ (เฉพาะนักเรียน) แบบไม่บล็อกหน้าจอ */
+function saveProgressToServer(){ if(state.user.role!=="student") return;
+  api("saveProgress",{lessonId:currentLessonId,readCount:readSet.size,totalCount:currentWords.length})
+    .catch(()=>{}); }
 
-async function goAdmin() {
-  if (!state.user || state.user.role !== "teacher") return toast("หน้านี้สำหรับครูเท่านั้น", "error");
-  show("view-admin");
-  await loadAdminLessons();
-}
+/* ===== แดชบอร์ดครู ===== */
+$("nav-dashboard").addEventListener("click",goDashboard);
+async function goDashboard(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-dashboard"); loading(true,"กำลังโหลดข้อมูลนักเรียน...");
+  try{ const [students,lessons,progress]=await Promise.all([
+      api("listStudents"),api("getLessons"),api("getProgressAll")]);
+    loading(false); dashState={students,lessons,progress}; renderDashboard(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
 
-// ---- รูปปก: อัปโหลดไฟล์ หรือวางลิงก์ ----
-$("a-cover-file").addEventListener("change", async (e) => {
-  const file = e.target.files[0]; if (!file) return;
-  loading(true, "กำลังอัปโหลดรูป...");
-  try {
-    const base64 = await compressImage(file);            // ย่อรูปก่อนส่ง (เร็ว ประหยัดเน็ต)
-    const res = await api("uploadImage", { dataBase64: base64, mimeType: "image/jpeg", name: file.name });
-    pendingCoverUrl = res.url;
-    showPreview(res.url);
-    loading(false); toast("อัปโหลดรูปปกแล้ว", "success");
-  } catch (err) { loading(false); toast("อัปโหลดรูปไม่สำเร็จ: " + err.message, "error"); }
-});
-$("a-cover-link").addEventListener("input", (e) => {
-  const url = driveLinkToImage(e.target.value.trim());
-  pendingCoverUrl = url;
-  if (url) showPreview(url); else $("a-preview").style.display = "none";
-});
-function showPreview(url){ $("a-preview-img").src = url; $("a-preview").style.display = "block"; }
+function renderDashboard(){ const {students,lessons,progress}=dashState;
+  const map={}; progress.forEach(p=>{ (map[p.username]=map[p.username]||{})[p.lessonId]=p; });
+  $("dash-stats").innerHTML =
+    `<div class="stat"><div class="num">${students.length}</div><div class="lbl">👧 นักเรียน</div></div>`+
+    `<div class="stat"><div class="num">${lessons.length}</div><div class="lbl">📚 บทเรียน</div></div>`;
 
-// ดึงไอดีจากลิงก์ Drive แล้วแปลงเป็นรูปแบบ lh3
-function driveLinkToImage(v) {
-  if (!v) return "";
-  if (v.indexOf("lh3.googleusercontent.com") >= 0) return v; // เป็นลิงก์รูปอยู่แล้ว
-  const m = v.match(/[-\w]{25,}/);                            // จับไอดีไฟล์ Drive
-  return m ? "https://lh3.googleusercontent.com/d/" + m[0] : v;
-}
+  // ตารางความก้าวหน้า
+  if(!students.length){ $("dash-progress").innerHTML=`<p class="muted">ยังไม่มีนักเรียน เพิ่มได้ที่ด้านล่าง</p>`; }
+  else{ let head=`<tr><th>นักเรียน</th>`;
+    lessons.forEach(l=>head+=`<th>${esc(l.title)}</th>`); head+=`<th>บทล่าสุด</th></tr>`;
+    let body="";
+    students.forEach(s=>{ const prog=map[s.username]||{}; let latest=null;
+      Object.values(prog).forEach(p=>{ if(!latest||new Date(p.updatedAt)>new Date(latest.updatedAt)) latest=p; });
+      const latestTitle=latest?((lessons.find(l=>l.id===latest.lessonId)||{}).title||"-"):"-";
+      let row=`<tr><td class="sticky-name">${esc(s.displayName||s.username)}<div class="muted">${esc(s.username)}</div></td>`;
+      lessons.forEach(l=>{ const p=prog[l.id];
+        if(p&&p.totalCount){ const pct=Math.round(p.readCount/p.totalCount*100);
+          row+=`<td><div class="cellbar"><span style="width:${pct}%"></span></div><small>${p.readCount}/${p.totalCount}</small></td>`; }
+        else row+=`<td class="muted">-</td>`; });
+      row+=`<td>${esc(latestTitle)}</td></tr>`; body+=row; });
+    $("dash-progress").innerHTML=`<div class="ptable"><table>${head}${body}</table></div>`; }
 
-// ย่อรูปด้วย canvas -> คืน base64 (ไม่รวมส่วนหัว data:)
-function compressImage(file, maxW = 1280, quality = 0.85) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxW / img.width);
-        const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
-        const c = document.createElement("canvas"); c.width = w; c.height = h;
-        c.getContext("2d").drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL("image/jpeg", quality).split(",")[1]);
-      };
-      img.onerror = reject; img.src = reader.result;
-    };
-    reader.onerror = reject; reader.readAsDataURL(file);
-  });
-}
+  // รายชื่อนักเรียน + จัดการ
+  const ul=$("student-list"); ul.innerHTML="";
+  if(!students.length){ ul.innerHTML=`<li class="muted">ยังไม่มีนักเรียน</li>`; return; }
+  students.forEach(s=>{ const li=document.createElement("li"); li.className="row";
+    li.innerHTML=`<span class="main"><strong>${esc(s.displayName||s.username)}</strong>
+        <span class="tag">${esc(s.username)}</span></span>
+      <span class="acts">
+        <button class="mini" data-a="pw">🔑 ตั้งรหัสใหม่</button>
+        <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
+    li.querySelector('[data-a="pw"]').onclick=()=>resetStudentPw(s);
+    li.querySelector('[data-a="del"]').onclick=()=>removeStudent(s);
+    ul.appendChild(li); }); }
 
-// ---- เพิ่มบทเรียน ----
-$("a-add-lesson").addEventListener("click", async () => {
-  const title = $("a-title").value.trim();
-  if (!title) return toast("ตั้งชื่อบทเรียนด้วยนะ", "error");
-  loading(true, "กำลังบันทึก...");
-  try {
-    await api("addLesson", { title, coverUrl: pendingCoverUrl, order: Number($("a-order").value) || 0 });
-    loading(false); toast("เพิ่มบทเรียนแล้ว", "success");
-    $("a-title").value = ""; $("a-cover-file").value = ""; $("a-cover-link").value = "";
-    pendingCoverUrl = ""; $("a-preview").style.display = "none";
-    loadAdminLessons();
-  } catch (err) { loading(false); toast(err.message, "error"); }
-});
+$("ds-add").addEventListener("click",async()=>{
+  const username=$("ds-username").value.trim(), password=$("ds-password").value.trim(), displayName=$("ds-name").value.trim();
+  if(!username||!password) return toast("กรอกชื่อผู้ใช้และรหัสผ่านของนักเรียน","error");
+  loading(true,"กำลังเพิ่มนักเรียน...");
+  try{ await api("addStudent",{username,password,displayName}); loading(false);
+    toast("เพิ่มนักเรียนแล้ว","success");
+    $("ds-username").value="";$("ds-password").value="";$("ds-name").value=""; goDashboard(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
 
-async function loadAdminLessons() {
-  loading(true, "กำลังโหลดบทเรียน...");
-  try {
-    const lessons = await api("getLessons");
-    loading(false);
-    const ul = $("admin-lessons"); ul.innerHTML = "";
-    if (!lessons.length) { ul.innerHTML = `<li class="muted">ยังไม่มีบทเรียน</li>`; return; }
-    lessons.forEach(l => {
-      const li = document.createElement("li");
-      li.className = "row" + (l.id === adminLessonId ? " active" : "");
-      const thumb = l.coverUrl ? `<img class="thumb" src="${esc(l.coverUrl)}" alt="">` : `<div class="thumb"></div>`;
-      li.innerHTML = `<span class="main">${thumb}<strong>${esc(l.title)}</strong>
-          <span class="muted">ลำดับ ${l.order}</span></span>
-        <span class="acts">
-          <button class="mini" data-a="words">📝 จัดการคำ</button>
+async function resetStudentPw(s){ const np=prompt(`ตั้งรหัสผ่านใหม่ให้ ${s.displayName||s.username}:`); if(np===null)return;
+  if(np.trim().length<4) return toast("รหัสผ่านอย่างน้อย 4 ตัว","error");
+  loading(true,"กำลังตั้งรหัสใหม่...");
+  try{ await api("setStudentPassword",{username:s.username,newPassword:np.trim()}); loading(false); toast("ตั้งรหัสใหม่แล้ว","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+async function removeStudent(s){ if(!confirm(`ลบนักเรียน "${s.displayName||s.username}"?`)) return;
+  loading(true,"กำลังลบ...");
+  try{ await api("deleteStudent",{username:s.username}); loading(false); toast("ลบนักเรียนแล้ว","success"); goDashboard(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== หน้าครู: จัดการบทเรียนและคำ ===== */
+$("nav-admin").addEventListener("click",goAdmin);
+async function goAdmin(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-admin"); await loadAdminLessons(); }
+
+$("a-cover-file").addEventListener("change",async(e)=>{ const file=e.target.files[0]; if(!file)return;
+  loading(true,"กำลังอัปโหลดรูป...");
+  try{ const base64=await compressImage(file);
+    const res=await api("uploadImage",{dataBase64:base64,mimeType:"image/jpeg",name:file.name});
+    pendingCoverUrl=res.url; showPreview(res.url); loading(false); toast("อัปโหลดรูปปกแล้ว","success"); }
+  catch(err){ loading(false); toast("อัปโหลดรูปไม่สำเร็จ: "+err.message,"error"); } });
+$("a-cover-link").addEventListener("input",(e)=>{ const url=driveLinkToImage(e.target.value.trim());
+  pendingCoverUrl=url; if(url)showPreview(url); else $("a-preview").style.display="none"; });
+function showPreview(url){ $("a-preview-img").src=url; $("a-preview").style.display="block"; }
+function driveLinkToImage(v){ if(!v)return""; if(v.indexOf("lh3.googleusercontent.com")>=0)return v;
+  const m=v.match(/[-\w]{25,}/); return m?"https://lh3.googleusercontent.com/d/"+m[0]:v; }
+function compressImage(file,maxW=1280,quality=0.85){ return new Promise((resolve,reject)=>{ const reader=new FileReader();
+  reader.onload=()=>{ const img=new Image(); img.onload=()=>{ const scale=Math.min(1,maxW/img.width);
+    const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+    const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
+    resolve(c.toDataURL("image/jpeg",quality).split(",")[1]); }; img.onerror=reject; img.src=reader.result; };
+  reader.onerror=reject; reader.readAsDataURL(file); }); }
+
+$("a-add-lesson").addEventListener("click",async()=>{ const title=$("a-title").value.trim();
+  if(!title)return toast("ตั้งชื่อบทเรียนด้วยนะ","error"); loading(true,"กำลังบันทึก...");
+  try{ await api("addLesson",{title,coverUrl:pendingCoverUrl,order:Number($("a-order").value)||0}); loading(false);
+    toast("เพิ่มบทเรียนแล้ว","success");
+    $("a-title").value="";$("a-cover-file").value="";$("a-cover-link").value="";pendingCoverUrl="";$("a-preview").style.display="none";
+    loadAdminLessons(); } catch(err){ loading(false); toast(err.message,"error"); } });
+
+async function loadAdminLessons(){ loading(true,"กำลังโหลดบทเรียน...");
+  try{ const lessons=await api("getLessons"); loading(false);
+    const ul=$("admin-lessons"); ul.innerHTML="";
+    if(!lessons.length){ ul.innerHTML=`<li class="muted">ยังไม่มีบทเรียน</li>`; return; }
+    lessons.forEach(l=>{ const li=document.createElement("li"); li.className="row"+(l.id===adminLessonId?" active":"");
+      const thumb=l.coverUrl?`<img class="thumb" src="${esc(l.coverUrl)}" alt="">`:`<div class="thumb"></div>`;
+      li.innerHTML=`<span class="main">${thumb}<strong>${esc(l.title)}</strong><span class="muted">ลำดับ ${l.order}</span></span>
+        <span class="acts"><button class="mini" data-a="words">📝 จัดการคำ</button>
           <button class="mini" data-a="edit">✏️ แก้ไข</button>
           <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
-      li.querySelector('[data-a="words"]').onclick = () => selectLesson(l);
-      li.querySelector('[data-a="edit"]').onclick  = () => editLesson(l);
-      li.querySelector('[data-a="del"]').onclick   = () => deleteLesson(l);
-      ul.appendChild(li);
-    });
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
+      li.querySelector('[data-a="words"]').onclick=()=>selectLesson(l);
+      li.querySelector('[data-a="edit"]').onclick=()=>editLesson(l);
+      li.querySelector('[data-a="del"]').onclick=()=>deleteLesson(l);
+      ul.appendChild(li); }); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
 
-async function editLesson(l) {
-  const title = prompt("แก้ชื่อบทเรียน:", l.title); if (title === null) return;
-  const order = prompt("ลำดับการแสดง (ตัวเลข):", l.order); if (order === null) return;
-  const cover = prompt("ลิงก์/ไอดีรูปปก (เว้นว่างได้):", l.coverUrl || ""); if (cover === null) return;
-  loading(true, "กำลังบันทึก...");
-  try {
-    await api("updateLesson", { id: l.id, title: title.trim() || l.title,
-      order: Number(order) || 0, coverUrl: driveLinkToImage(cover.trim()) });
-    loading(false); toast("แก้ไขแล้ว", "success"); loadAdminLessons();
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
+async function editLesson(l){ const title=prompt("แก้ชื่อบทเรียน:",l.title); if(title===null)return;
+  const order=prompt("ลำดับการแสดง (ตัวเลข):",l.order); if(order===null)return;
+  const cover=prompt("ลิงก์/ไอดีรูปปก (เว้นว่างได้):",l.coverUrl||""); if(cover===null)return;
+  loading(true,"กำลังบันทึก...");
+  try{ await api("updateLesson",{id:l.id,title:title.trim()||l.title,order:Number(order)||0,coverUrl:driveLinkToImage(cover.trim())});
+    loading(false); toast("แก้ไขแล้ว","success"); loadAdminLessons(); } catch(err){ loading(false); toast(err.message,"error"); } }
 
-async function deleteLesson(l) {
-  if (!confirm(`ลบบทเรียน "${l.title}" และคำทั้งหมดในนั้น?`)) return;
-  loading(true, "กำลังลบ...");
-  try {
-    await api("deleteLesson", { id: l.id });
-    if (adminLessonId === l.id) { adminLessonId = null; $("word-panel").style.display = "none"; }
-    loading(false); toast("ลบบทเรียนแล้ว", "success"); loadAdminLessons();
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
+async function deleteLesson(l){ if(!confirm(`ลบบทเรียน "${l.title}" และคำทั้งหมดในนั้น?`))return; loading(true,"กำลังลบ...");
+  try{ await api("deleteLesson",{id:l.id});
+    if(adminLessonId===l.id){adminLessonId=null;$("word-panel").style.display="none";}
+    loading(false); toast("ลบบทเรียนแล้ว","success"); loadAdminLessons(); } catch(err){ loading(false); toast(err.message,"error"); } }
 
-// ---- จัดการคำในบทเรียน ----
-async function selectLesson(l) {
-  adminLessonId = l.id;
-  $("word-panel").style.display = "block";
-  $("word-panel-title").textContent = "คำในบทเรียน: " + l.title;
-  loadAdminLessons();
-  await loadAdminWords();
-  $("word-panel").scrollIntoView({ behavior: "smooth" });
-}
+async function selectLesson(l){ adminLessonId=l.id; $("word-panel").style.display="block";
+  $("word-panel-title").textContent="คำในบทเรียน: "+l.title; loadAdminLessons(); await loadAdminWords();
+  $("word-panel").scrollIntoView({behavior:"smooth"}); }
 
-async function loadAdminWords() {
-  loading(true, "กำลังโหลดคำ...");
-  try {
-    const words = await api("getWords", { lessonId: adminLessonId });
-    loading(false);
-    const ul = $("admin-words"); ul.innerHTML = "";
-    if (!words.length) { ul.innerHTML = `<li class="muted">ยังไม่มีคำ วางคำด้านล่างเพื่อเพิ่ม</li>`; return; }
-    words.forEach((w, i) => {
-      const li = document.createElement("li"); li.className = "row";
-      li.innerHTML = `<span class="main"><strong class="word-text">${esc(w.text)}</strong></span>
+async function loadAdminWords(){ loading(true,"กำลังโหลดคำ...");
+  try{ const words=await api("getWords",{lessonId:adminLessonId}); loading(false);
+    const ul=$("admin-words"); ul.innerHTML="";
+    if(!words.length){ ul.innerHTML=`<li class="muted">ยังไม่มีคำ วางคำด้านล่างเพื่อเพิ่ม</li>`; return; }
+    words.forEach((w,i)=>{ const li=document.createElement("li"); li.className="row";
+      const hasAudio=w.audioUrl?`<span class="tag">🎵 มีเสียงครู</span>`:"";
+      li.innerHTML=`<span class="main"><strong class="word-text">${esc(w.text)}</strong>${hasAudio}</span>
         <span class="acts">
-          <button class="mini" data-a="up"   ${i===0?"disabled":""}>⬆️</button>
+          <button class="mini" data-a="up" ${i===0?"disabled":""}>⬆️</button>
           <button class="mini" data-a="down" ${i===words.length-1?"disabled":""}>⬇️</button>
-          <button class="mini" data-a="play">🔊</button>
+          <button class="mini" data-a="play">🔊 ฟัง</button>
+          <button class="mini" data-a="rec">🎙️ อัดเสียง</button>
           <button class="mini" data-a="edit">✏️</button>
           <button class="mini mini--danger" data-a="del">🗑️</button></span>`;
-      li.querySelector('[data-a="up"]').onclick   = () => swapWord(words, i, -1);
-      li.querySelector('[data-a="down"]').onclick = () => swapWord(words, i, 1);
-      li.querySelector('[data-a="play"]').onclick = () => speak(w.text, w.audioUrl);
-      li.querySelector('[data-a="edit"]').onclick = () => editWord(w);
-      li.querySelector('[data-a="del"]').onclick  = () => deleteWord(w);
-      ul.appendChild(li);
-    });
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
+      li.querySelector('[data-a="up"]').onclick=()=>swapWord(words,i,-1);
+      li.querySelector('[data-a="down"]').onclick=()=>swapWord(words,i,1);
+      li.querySelector('[data-a="play"]').onclick=()=>speak(w.text,w.audioUrl);
+      li.querySelector('[data-a="rec"]').onclick=()=>openRecorder(w);
+      li.querySelector('[data-a="edit"]').onclick=()=>editWord(w);
+      li.querySelector('[data-a="del"]').onclick=()=>deleteWord(w);
+      ul.appendChild(li); }); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
 
-$("a-add-words").addEventListener("click", async () => {
-  const list = $("bulk-words").value.split("\n").map(s => s.trim()).filter(Boolean);
-  if (!list.length) return toast("ยังไม่ได้พิมพ์คำเลยนะ", "error");
-  loading(true, "กำลังเพิ่มคำ...");
-  try {
-    const res = await api("addWords", { lessonId: adminLessonId, words: list });
-    loading(false); $("bulk-words").value = "";
-    toast(`เพิ่ม ${res.added} คำแล้ว`, "success"); loadAdminWords();
-  } catch (err) { loading(false); toast(err.message, "error"); }
-});
+$("a-add-words").addEventListener("click",async()=>{ const list=$("bulk-words").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(!list.length)return toast("ยังไม่ได้พิมพ์คำเลยนะ","error"); loading(true,"กำลังเพิ่มคำ...");
+  try{ const res=await api("addWords",{lessonId:adminLessonId,words:list}); loading(false); $("bulk-words").value="";
+    toast(`เพิ่ม ${res.added} คำแล้ว`,"success"); loadAdminWords(); } catch(err){ loading(false); toast(err.message,"error"); } });
 
-async function swapWord(words, i, dir) {
-  const other = words[i + dir]; if (!other) return;
-  loading(true, "กำลังจัดลำดับ...");
-  try {
-    await api("reorderWord", { idA: words[i].id, orderA: other.order, idB: other.id, orderB: words[i].order });
-    loading(false); loadAdminWords();
-  } catch (err) { loading(false); toast(err.message, "error"); }
-}
-async function editWord(w) {
-  const text = prompt("แก้ไขคำ:", w.text); if (text === null) return;
-  if (!text.trim()) return toast("คำห้ามว่าง", "error");
-  loading(true, "กำลังบันทึก...");
-  try { await api("updateWord", { id: w.id, text: text.trim() }); loading(false); toast("แก้ไขแล้ว","success"); loadAdminWords(); }
-  catch (err) { loading(false); toast(err.message, "error"); }
-}
-async function deleteWord(w) {
-  if (!confirm(`ลบคำว่า "${w.text}"?`)) return;
-  loading(true, "กำลังลบ...");
-  try { await api("deleteWord", { id: w.id }); loading(false); toast("ลบคำแล้ว","success"); loadAdminWords(); }
-  catch (err) { loading(false); toast(err.message, "error"); }
-}
+async function swapWord(words,i,dir){ const other=words[i+dir]; if(!other)return; loading(true,"กำลังจัดลำดับ...");
+  try{ await api("reorderWord",{idA:words[i].id,orderA:other.order,idB:other.id,orderB:words[i].order}); loading(false); loadAdminWords(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+async function editWord(w){ const text=prompt("แก้ไขคำ:",w.text); if(text===null)return;
+  if(!text.trim())return toast("คำห้ามว่าง","error"); loading(true,"กำลังบันทึก...");
+  try{ await api("updateWord",{id:w.id,text:text.trim()}); loading(false); toast("แก้ไขแล้ว","success"); loadAdminWords(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+async function deleteWord(w){ if(!confirm(`ลบคำว่า "${w.text}"?`))return; loading(true,"กำลังลบ...");
+  try{ await api("deleteWord",{id:w.id}); loading(false); toast("ลบคำแล้ว","success"); loadAdminWords(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
 
-/* ============================================================
-   เริ่มต้นแอป: ถ้าเคยล็อกอินไว้ ให้เข้าหน้าบทเรียนเลย
-   ============================================================ */
-(function init() {
-  const saved = localStorage.getItem("session");
-  if (saved) {
-    try {
-      state = JSON.parse(saved);
-      if (state.token && state.user) { setSession(state.user, state.token); goLessons(); return; }
-    } catch (_) {}
-  }
-  show("view-login");
-})();
+/* ===== อัดเสียงครู (MediaRecorder) ===== */
+let rec={mr:null,chunks:[],blob:null,stream:null,word:null};
+function pickAudioMime(){ if(!window.MediaRecorder)return"";
+  return ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"].find(m=>{try{return MediaRecorder.isTypeSupported(m)}catch(_){return false}})||""; }
+function blobToBase64(blob){ return new Promise((res,rej)=>{ const r=new FileReader();
+  r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
+
+function openRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word};
+  $("rec-title").textContent="อัดเสียงคำว่า: "+word.text;
+  $("rec-status").textContent=word.audioUrl?"มีเสียงอยู่แล้ว — อัดใหม่เพื่อแทนที่ได้":"พร้อมอัด";
+  const a=$("rec-audio");
+  if(word.audioUrl){a.src=word.audioUrl;a.style.display="block";}else{a.src="";a.style.display="none";}
+  $("rec-start").style.display="inline-flex";$("rec-stop").style.display="none";$("rec-save").style.display="none";
+  $("rec-overlay").style.display="flex"; }
+
+$("rec-start").addEventListener("click",async()=>{
+  try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const mime=pickAudioMime();
+    const mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+    rec.mr=mr; rec.chunks=[]; rec.stream=stream; rec.blob=null;
+    mr.ondataavailable=e=>{ if(e.data&&e.data.size)rec.chunks.push(e.data); };
+    mr.onstop=()=>{ rec.blob=new Blob(rec.chunks,{type:mr.mimeType||mime||"audio/webm"});
+      const a=$("rec-audio"); a.src=URL.createObjectURL(rec.blob); a.style.display="block";
+      $("rec-save").style.display="inline-flex"; $("rec-status").textContent="อัดเสร็จแล้ว ฟังก่อนได้ ถ้าโอเคกดบันทึก";
+      if(rec.stream)rec.stream.getTracks().forEach(t=>t.stop()); };
+    mr.start();
+    $("rec-start").style.display="none";$("rec-stop").style.display="inline-flex";
+    $("rec-save").style.display="none";$("rec-audio").style.display="none";
+    $("rec-status").textContent="⏺️ กำลังอัด... ออกเสียงได้เลย"; }
+  catch(err){ toast("ใช้ไมโครโฟนไม่ได้: "+err.message,"error"); } });
+
+$("rec-stop").addEventListener("click",()=>{ if(rec.mr&&rec.mr.state!=="inactive")rec.mr.stop();
+  $("rec-stop").style.display="none"; $("rec-start").style.display="inline-flex"; });
+
+$("rec-save").addEventListener("click",async()=>{ if(!rec.blob)return; loading(true,"กำลังบันทึกเสียง...");
+  try{ const b64=await blobToBase64(rec.blob);
+    const up=await api("uploadAudio",{dataBase64:b64,mimeType:rec.blob.type,name:"voice_"+rec.word.id});
+    await api("updateWord",{id:rec.word.id,audioUrl:up.url}); loading(false);
+    toast("บันทึกเสียงครูแล้ว 🎵","success"); closeRec(); loadAdminWords(); }
+  catch(err){ loading(false); toast("บันทึกเสียงไม่สำเร็จ: "+err.message,"error"); } });
+
+$("rec-close").addEventListener("click",closeRec);
+function closeRec(){ if(rec.stream)rec.stream.getTracks().forEach(t=>t.stop());
+  if(rec.mr&&rec.mr.state!=="inactive"){try{rec.mr.stop()}catch(_){}}
+  $("rec-overlay").style.display="none"; const a=$("rec-audio"); a.pause(); a.src=""; }
+
+/* ===== เริ่มต้นแอป ===== */
+(function init(){ const saved=localStorage.getItem("session");
+  if(saved){ try{ state=JSON.parse(saved);
+    if(state.token&&state.user){ setSession(state.user,state.token); routeHome(); return; } }catch(_){} }
+  show("view-login"); })();
 </script>
 </body>
 </html>
