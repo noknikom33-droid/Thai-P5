@@ -338,8 +338,30 @@ function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",
 let voices=[], warnedNoThai=false;
 function loadVoices(){ if("speechSynthesis" in window) voices=speechSynthesis.getVoices(); }
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
-function speak(text,audioUrl){ if(audioUrl){const a=new Audio(audioUrl);
-    a.play().catch(()=>ttsThai(text)); a.onerror=()=>ttsThai(text); return;} ttsThai(text); }
+const audioCache={};
+/* แปลง audioUrl ให้เป็นแหล่งเสียงที่เล่นได้จริง
+   - ลิงก์ภายนอกปกติ (http) เล่นตรง ๆ
+   - ไอดีไฟล์ Drive (หรือลิงก์ Drive แบบเก่า) -> ดึงไบต์ผ่าน API แล้วทำเป็น data URL */
+async function resolveAudioSrc(audioUrl){
+  if(audioCache[audioUrl]) return audioCache[audioUrl];
+  let fileId=null;
+  if(!/^https?:/i.test(audioUrl)) fileId=audioUrl;
+  else { const m=audioUrl.match(/[-\w]{25,}/);
+         if(audioUrl.indexOf("drive.google.com")>=0 && m) fileId=m[0]; }
+  if(!fileId) return audioUrl;
+  const res=await api("getAudio",{id:fileId});
+  const src="data:"+(res.mimeType||"audio/webm")+";base64,"+res.base64;
+  audioCache[audioUrl]=src; return src;
+}
+function speak(text,audioUrl){
+  if(audioUrl){
+    resolveAudioSrc(audioUrl).then(src=>{ const a=new Audio(src);
+      a.onerror=()=>ttsThai(text); a.play().catch(()=>ttsThai(text)); })
+      .catch(()=>ttsThai(text));   // ดึงเสียงครูไม่ได้ -> ใช้เสียงสังเคราะห์สำรอง
+    return;
+  }
+  ttsThai(text);
+}
 function ttsThai(text){ if(!("speechSynthesis" in window)){toast("เครื่องนี้ยังอ่านออกเสียงไม่ได้ แต่ดูคำได้นะ");return;}
   speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="th-TH"; u.rate=0.9;
   const thai=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith("th"));
