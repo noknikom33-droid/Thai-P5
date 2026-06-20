@@ -577,6 +577,11 @@ window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); deferre
 window.addEventListener("appinstalled",()=>{ deferredPrompt=null;
   const b=$("install-btn"); if(b) b.style.display="none"; toast("ติดตั้งแอปแล้ว 🎉","success"); });
 
+/* ลงทะเบียน Service Worker เพื่อให้เปิดแอปแบบออฟไลน์ได้ (ต้องมีไฟล์ sw.js อยู่โฟลเดอร์เดียวกัน) */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
 /* แสดงปุ่มติดตั้งบนหน้าเข้าสู่ระบบ ถ้ายังไม่ได้เปิดแบบติดตั้ง */
 function maybeShowInstall(){ const b=$("install-btn"); if(!b) return;
   b.style.display = isStandalone() ? "none" : "inline-block"; }
