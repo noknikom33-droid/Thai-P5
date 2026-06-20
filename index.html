@@ -139,6 +139,28 @@ img{display:block;max-width:100%}
 .bc-icon{width:56px;text-align:center;font-size:1.4rem}
 .bc-name{flex:1 1 130px}
 .bc-num{width:80px}
+
+/* รายงานรายบุคคล (พิมพ์/บันทึก PDF) */
+#report-area{margin-top:16px}
+.report{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:30px;max-width:820px;margin:0 auto}
+.report .rhead{text-align:center;border-bottom:3px solid var(--teal);padding-bottom:14px;margin-bottom:16px}
+.report .rhead h2{color:var(--teal-dark)}
+.report .rmeta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:1rem;margin-bottom:6px}
+.report table{width:100%;border-collapse:collapse;margin:12px 0}
+.report th,.report td{border:1px solid #d8deec;padding:9px 11px;text-align:left;font-size:.95rem;vertical-align:top}
+.report th{background:#f1f5ff;color:var(--ink-soft)}
+.report .rgrade{font-weight:700;white-space:nowrap}
+.report .rbadges{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.report .rbadge{display:inline-flex;align-items:center;gap:6px;background:#fffdf3;border:2px solid var(--sun);border-radius:14px;padding:6px 12px;font-weight:700;font-size:.95rem}
+.report .rsign{margin-top:36px;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.report .rsign .col{flex:1 1 200px;text-align:center;color:var(--ink-soft);font-size:.95rem}
+.report .rsign .line{margin-top:40px;border-top:1px dotted #9fb0cf;padding-top:6px}
+@media print{
+  body{background:#fff}
+  .appbar,.menu-panel,#report-controls,.no-print,#toasts,#loading,#confetti{display:none !important}
+  .container{padding:0;max-width:100%}
+  .report{box-shadow:none;border-radius:0;max-width:100%;padding:0}
+}
 .minibar{background:#e3e8f5;border-radius:999px;height:10px;overflow:hidden;margin-top:8px}
 .minibar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
 
@@ -442,6 +464,22 @@ textarea{resize:vertical;min-height:150px}
   </div>
 </section>
 
+<!-- หน้าครู: รายงานรายบุคคล (พิมพ์/ส่งผู้ปกครอง) -->
+<section id="view-report" class="view">
+  <div class="container">
+    <div id="report-controls">
+      <h2 class="display" style="margin-bottom:8px">📄 รายงานรายบุคคล</h2>
+      <p class="muted">เลือกนักเรียนเพื่อสร้างรายงานผลการอ่าน แล้วกดพิมพ์หรือบันทึกเป็น PDF ส่งผู้ปกครองได้</p>
+      <div class="inline" style="align-items:flex-end">
+        <div class="field"><label for="report-student">เลือกนักเรียน</label>
+          <select id="report-student"><option value="">— เลือกนักเรียน —</option></select></div>
+        <button class="mini" id="report-print" disabled>🖨️ พิมพ์ / บันทึก PDF</button>
+      </div>
+    </div>
+    <div id="report-area"></div>
+  </div>
+</section>
+
 <!-- หน้าครู: จัดการบทเรียนและคำ -->
 <section id="view-admin" class="view">
   <div class="container">
@@ -666,6 +704,7 @@ const TEACHER_MENU = [
   { go:"students",   label:"🧒 เพิ่ม / จัดการนักเรียน" },
   { go:"admin",      label:"⚙️ จัดการบทเรียน" },
   { go:"recordings", label:"🎧 เสียงอ่านของนักเรียน" },
+  { go:"report",     label:"📄 รายงานนักเรียน" },
   { go:"settings",   label:"🛠️ การตั้งค่าทั่วไป" },
   { go:"logout",     label:"🚪 ออกจากระบบ" }
 ];
@@ -711,6 +750,7 @@ function navTo(go){
     case "students":   goStudents();   break;
     case "admin":      goAdmin();      break;
     case "recordings": goRecordings(); break;
+    case "report":     goReport();     break;
     case "settings":   goSettings();   break;
     case "install":    installApp();   return;
     case "logout":     doLogout();     return;
@@ -1337,6 +1377,73 @@ async function deleteRecordingItem(r){
     if(dashState&&dashState.recordings) dashState.recordings=dashState.recordings.filter(x=>x.id!==r.id);
     renderRecList(); toast("ลบเสียงแล้ว","success"); }
   catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== รายงานรายบุคคล (ครู) — พิมพ์/บันทึก PDF ส่งผู้ปกครอง ===== */
+let reportState={students:[],lessons:[],progress:[],tests:[],badges:[]};
+async function goReport(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-report"); $("report-area").innerHTML=""; $("report-print").disabled=true;
+  loading(true,"กำลังโหลดข้อมูลรายงาน...");
+  try{ const [students,lessons,progress,tests,badges]=await Promise.all([
+      api("listStudents"),api("getLessons"),api("getProgressAll"),api("getTests"),api("getBadgeConfig")]);
+    reportState={students,lessons,progress,tests,badges:Array.isArray(badges)?badges:[]};
+    loading(false);
+    const sel=$("report-student");
+    let opts=`<option value="">— เลือกนักเรียน —</option>`;
+    students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+    sel.innerHTML=opts; sel.value="";
+  }catch(err){ loading(false); toast(err.message,"error"); } }
+
+$("report-student").addEventListener("change",()=>{ const u=$("report-student").value;
+  if(!u){ $("report-area").innerHTML=""; $("report-print").disabled=true; return; }
+  renderReport(u); $("report-print").disabled=false; });
+$("report-print").addEventListener("click",()=>{ if($("report-student").value) window.print(); });
+
+function gradeHex(g){ return {"น้อย":"#d23a3a","พอใช้":"#c98300","ดี":"#2e9e6b","ดีมาก":"#2b86d6","ดีเยี่ยม":"#6d4fc4"}[g]||""; }
+
+function renderReport(username){
+  const key=String(username).trim();
+  const s=reportState.students.find(x=>String(x.username).trim()===key)||{username,displayName:username};
+  const lessons=reportState.lessons;
+  const prog={}; reportState.progress.filter(p=>String(p.username).trim()===key).forEach(p=>prog[p.lessonId]=p);
+  const tests={}; reportState.tests.filter(t=>String(t.username).trim()===key).forEach(t=>tests[t.lessonId]=t);
+  const badges=computeBadges(Object.values(prog),Object.values(tests),reportState.badges).filter(b=>b.got);
+
+  let rows="";
+  lessons.forEach(l=>{ const p=prog[l.id], t=tests[l.id];
+    const readTxt=(p&&Number(p.totalCount))?`${p.readCount}/${p.totalCount} คำ`:"ยังไม่ได้อ่าน";
+    let gradeTxt="—", color="";
+    if(t){ if(t.status==="graded"&&t.grade){ gradeTxt=t.grade; color=gradeHex(t.grade); } else gradeTxt="ส่งแล้ว (รอประเมิน)"; }
+    const comment=(t&&t.comment)?esc(t.comment):"—";
+    rows+=`<tr><td>${esc(l.title)}</td><td>${esc(readTxt)}</td><td class="rgrade" style="color:${color}">${esc(gradeTxt)}</td><td>${comment}</td></tr>`;
+  });
+  if(!lessons.length) rows=`<tr><td colspan="4" style="text-align:center;color:#6c7390">ยังไม่มีบทเรียน</td></tr>`;
+
+  const badgeHtml = badges.length
+    ? `<div class="rbadges">`+badges.map(b=>`<span class="rbadge">${b.ic} ${esc(b.nm)}</span>`).join("")+`</div>`
+    : `<p class="muted">ยังไม่ได้รับตรา</p>`;
+  let when=""; try{ when=new Date().toLocaleDateString("th-TH",{year:"numeric",month:"long",day:"numeric"}); }catch(_){ when=""; }
+  const teacher=(state.user&&state.user.displayName)||"คุณครู";
+
+  $("report-area").innerHTML=`
+    <div class="report">
+      <div class="rhead">
+        <h2>รายงานผลการอ่านภาษาไทย</h2>
+        <div class="muted">โรงเรียนนิคมสร้างตนเอง 3 · ชั้นประถมศึกษาปีที่ 5</div>
+      </div>
+      <div class="rmeta"><div><b>ชื่อนักเรียน:</b> ${esc(s.displayName||s.username)}</div>
+        <div><b>วันที่ออกรายงาน:</b> ${esc(when)}</div></div>
+      <table>
+        <tr><th>บทเรียน</th><th>อ่านแล้ว</th><th>ผลทดสอบ</th><th>คำแนะนำจากคุณครู</th></tr>
+        ${rows}
+      </table>
+      <h3 class="display" style="margin:18px 0 6px;color:var(--teal-dark)">🏅 ตราสะสมที่ได้รับ (${badges.length})</h3>
+      ${badgeHtml}
+      <div class="rsign">
+        <div class="col"><div class="line">ลงชื่อ ${esc(teacher)}<br>ครูผู้ประเมิน</div></div>
+        <div class="col"><div class="line">ลงชื่อ ..............................<br>ผู้ปกครอง</div></div>
+      </div>
+    </div>`;
+}
 
 /* ===== การตั้งค่าทั่วไป (เปลี่ยนรหัสผ่านครู + เริ่มเทอมใหม่) ===== */
 async function goSettings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
