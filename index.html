@@ -250,11 +250,15 @@ textarea{resize:vertical;min-height:150px}
     <h1>อ่านสนุก</h1>
     <p class="sub">ฝึกอ่านคำภาษาไทย สำหรับชั้น ป.5</p>
 
-    <!-- ขั้นที่ 1: นักเรียนเลือกชื่อตัวเอง -->
+    <!-- ขั้นที่ 1: นักเรียนเลือกชื่อตัวเองจากดร็อปดาวน์ -->
     <div id="login-pick">
-      <h2 class="display" style="margin-bottom:8px">เลือกชื่อของหนู 👇</h2>
-      <div id="roster-grid" class="roster-grid"></div>
-      <p id="roster-empty" class="muted" style="display:none">ยังไม่มีรายชื่อนักเรียน — ให้คุณครูเพิ่มนักเรียนก่อนนะ 🐣</p>
+      <h2 class="display" style="margin-bottom:10px">เลือกชื่อของหนู 👇</h2>
+      <div class="field">
+        <label for="roster-select">รายชื่อนักเรียน</label>
+        <select id="roster-select" style="font-size:1.15rem"><option value="">— เลือกชื่อ —</option></select>
+      </div>
+      <button class="btn" id="roster-next" style="width:100%">ถัดไป →</button>
+      <p id="roster-empty" class="muted" style="display:none;margin-top:10px">ยังไม่มีรายชื่อนักเรียน — ให้คุณครูเพิ่มนักเรียนก่อนนะ 🐣</p>
       <button class="link-btn" id="to-teacher" type="button">เข้าสู่ระบบสำหรับครู →</button>
     </div>
 
@@ -712,7 +716,7 @@ $("auth-form").addEventListener("submit",async(e)=>{ e.preventDefault();
 const AVATARS=["🐤","🐱","🐶","🐰","🦊","🐼","🐨","🐯","🦁","🐸","🐧","🦉","🐝","🦄","🐢","🐙","🐳","🦋","🌟","🍀","🐥","🐹","🐻","🐲"];
 function avatarFor(key){ let h=0; const s=String(key); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return AVATARS[h%AVATARS.length]; }
 
-let pickedStudent=null, pinValue="";
+let pickedStudent=null, pinValue="", rosterList=[];
 
 function resetLoginUI(){
   $("login-teacher").style.display="none"; $("login-pin").style.display="none"; $("login-pick").style.display="block";
@@ -721,22 +725,27 @@ function resetLoginUI(){
   loadRoster();
 }
 async function loadRoster(){
-  const grid=$("roster-grid"); grid.innerHTML="";
-  $("roster-empty").style.display="none";
+  const sel=$("roster-select"); $("roster-empty").style.display="none";
+  sel.innerHTML=`<option value="">— กำลังโหลด... —</option>`;
   try{
-    const list=await api("getStudentRoster");
-    if(!list.length){ $("roster-empty").style.display="block"; return; }
-    list.forEach(s=>{
-      const b=document.createElement("button"); b.type="button"; b.className="name-card";
-      b.innerHTML=`<span class="ava">${avatarFor(s.username)}</span><span class="nm">${esc(s.displayName||s.username)}</span>`;
-      b.addEventListener("click",()=>pickStudent(s));
-      grid.appendChild(b);
-    });
+    const list=await api("getStudentRoster"); rosterList=list;
+    if(!list.length){ sel.innerHTML=`<option value="">— ยังไม่มีรายชื่อ —</option>`; $("roster-empty").style.display="block"; return; }
+    let opts=`<option value="">— เลือกชื่อ —</option>`;
+    list.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+    sel.innerHTML=opts;
   }catch(err){
+    sel.innerHTML=`<option value="">— โหลดไม่ได้ —</option>`;
     $("roster-empty").style.display="block";
     $("roster-empty").textContent="โหลดรายชื่อไม่ได้ — ลองรีเฟรช หรือเข้าสู่ระบบสำหรับครู";
   }
 }
+$("roster-next").addEventListener("click",()=>{
+  const u=$("roster-select").value;
+  if(!u) return toast("เลือกชื่อก่อนนะ","error");
+  const s=rosterList.find(x=>String(x.username)===u);
+  if(s) pickStudent(s);
+});
+$("roster-select").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("roster-next").click(); });
 function pickStudent(s){ pickedStudent=s; pinValue="";
   $("login-pick").style.display="none"; $("login-teacher").style.display="none";
   $("login-pin").style.display="block";
