@@ -253,6 +253,23 @@ textarea{resize:vertical;min-height:150px}
 .warn-banner{background:#fff7e6;color:#8a5a00;border:2px solid #ffd980;border-radius:14px;
   padding:12px 16px;margin:12px 0;font-size:.98rem;line-height:1.5}
 .warn-banner.err{background:#fff0f0;color:#b3261e;border-color:#ffb3b3}
+/* คู่มือการใช้งาน (นักเรียน) */
+.help-steps{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.help-step{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px;display:flex;gap:14px;align-items:flex-start}
+.help-step .ic{flex:0 0 auto;width:56px;height:56px;border-radius:50%;background:#e7fbfb;display:flex;align-items:center;justify-content:center;font-size:1.9rem}
+.help-step .tx{flex:1}
+.help-step .tx .lbl{font-size:.85rem;color:var(--teal-dark);font-weight:700}
+.help-step .tx h3{font-size:1.2rem;color:var(--ink);margin:2px 0 4px}
+.help-step .tx p{margin:0;color:var(--ink-soft);line-height:1.6}
+.help-note{background:#fff7e6;border:2px solid #ffd980;border-radius:14px;padding:13px 16px;margin-top:16px;color:#8a5a00;line-height:1.6}
+/* คู่มือครู */
+.guide{max-width:840px;margin:0 auto}
+.guide .gsec{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:22px;margin-bottom:16px}
+.guide .gsec h3{color:var(--teal-dark);margin-bottom:10px;font-size:1.25rem}
+.guide .gsec ol,.guide .gsec ul{margin:0;padding-left:22px;line-height:1.85}
+.guide .gsec li{margin-bottom:5px}
+.guide .gsec p{line-height:1.75;color:var(--ink);margin:0 0 6px}
+.guide .gtip{background:#eef7ff;border:2px solid #cfe6ff;border-radius:14px;padding:12px 14px;margin-top:10px;color:#0f5e8a;line-height:1.6}
 /* recorder overlay */
 .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9996;background:rgba(40,49,73,.45);padding:18px}
 .rec-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:26px;width:100%;max-width:440px;text-align:center}
@@ -352,6 +369,29 @@ textarea{resize:vertical;min-height:150px}
     <div id="badge-summary" class="badge-summary"></div>
     <div id="badge-grid" class="badge-grid"></div>
     <p class="app-credit">พัฒนาโดย <strong>ครูศิริพงษ์ ธิวรรณ</strong> · โรงเรียนนิคมสร้างตนเอง 3</p>
+  </div>
+</section>
+
+<!-- หน้านักเรียน: วิธีใช้งาน -->
+<section id="view-help" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:4px">❓ วิธีใช้งาน</h2>
+    <p class="muted">ทำตามขั้นตอนนี้ได้เลยนะ 🐤</p>
+    <div class="help-steps">
+      <div class="help-step"><div class="ic">🔑</div><div class="tx"><div class="lbl">ขั้นที่ 1</div>
+        <h3>เข้าสู่ระบบ</h3><p>แตะช่อง "เลือกชื่อ" หาชื่อของหนู แล้วกดรหัส PIN 4 ตัวที่คุณครูให้ ถ้ากดผิดกด ⌫ ลบได้</p></div></div>
+      <div class="help-step"><div class="ic">📚</div><div class="tx"><div class="lbl">ขั้นที่ 2</div>
+        <h3>ฝึกอ่านในบทเรียน</h3><p>ไปเมนู "บทเรียน" แตะการ์ดบท แล้วแตะปุ่ม 🔊 เพื่อฟังเสียงอ่านของแต่ละคำ อ่านตามให้คล่อง ดาว ⭐ จะขึ้นทีละคำ</p></div></div>
+      <div class="help-step"><div class="ic">🎤</div><div class="tx"><div class="lbl">ขั้นที่ 3</div>
+        <h3>ทำแบบทดสอบการอ่าน</h3><p>ไปเมนู "ทดสอบการอ่าน" เลือกบท แตะ 🎤 ที่แต่ละคำแล้วอ่านออกเสียงดัง ๆ ชัด ๆ อัดให้ครบทุกคำ</p></div></div>
+      <div class="help-step"><div class="ic">📨</div><div class="tx"><div class="lbl">ขั้นที่ 4</div>
+        <h3>ส่งให้คุณครู</h3><p>พออัดครบทุกคำ ปุ่ม "ส่งให้คุณครู" จะขึ้นมา กดส่งได้เลย — แต่ละบทส่งได้ครั้งเดียวนะ</p></div></div>
+      <div class="help-step"><div class="ic">🌟</div><div class="tx"><div class="lbl">ขั้นที่ 5</div>
+        <h3>ดูผลและคำแนะนำ</h3><p>เมื่อคุณครูตรวจแล้ว จะมีดาวกระพริบบอกคะแนน และกล่องคำแนะนำจากคุณครูในหน้าบทเรียน</p></div></div>
+      <div class="help-step"><div class="ic">🏅</div><div class="tx"><div class="lbl">ขั้นที่ 6</div>
+        <h3>เก็บตราสะสม</h3><p>ไปเมนู "ตราสะสม" ดูว่าได้ตราอะไรแล้ว ตั้งใจอ่านและทดสอบให้ครบเพื่อเก็บตราให้หมด!</p></div></div>
+    </div>
+    <p class="help-note">💡 ถ้าแตะไมค์แล้วอัดเสียงไม่ได้ ให้บอกคุณครูช่วยเปิดเว็บด้วย Chrome หรือ Safari แล้วกด "อนุญาต" ไมโครโฟนนะ</p>
   </div>
 </section>
 
@@ -460,6 +500,79 @@ textarea{resize:vertical;min-height:150px}
         <ul id="rec-list" class="list"></ul>
       </div>
       <div id="rec-grade-box" style="display:none"></div>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: คู่มือการใช้งาน -->
+<section id="view-guide" class="view">
+  <div class="container guide">
+    <h2 class="display" style="margin-bottom:10px">📖 คู่มือสำหรับครู</h2>
+
+    <div class="gsec">
+      <h3>1) เริ่มต้นใช้งาน</h3>
+      <ul>
+        <li>บัญชีครูเริ่มต้น: ชื่อผู้ใช้ <b>admin</b> รหัสผ่าน <b>admin123456</b> — เข้าครั้งแรกแล้วควรเปลี่ยนรหัสผ่านที่เมนู "การตั้งค่าทั่วไป"</li>
+        <li>เมนูทั้งหมดอยู่ที่ปุ่ม <b>☰</b> มุมซ้ายบน แตะเลือกหัวข้อแล้วเมนูจะย่อให้เอง</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
+      <h3>2) เพิ่มและจัดการนักเรียน</h3>
+      <p>เมนู <b>🧒 เพิ่ม / จัดการนักเรียน</b></p>
+      <ol>
+        <li>กรอก <b>ชื่อผู้ใช้</b> (ตัวอักษรอังกฤษสั้น ๆ ใช้อ้างอิงภายใน), <b>ชื่อที่แสดง</b> (ชื่อที่เด็กเห็นและเลือก) และ <b>PIN 4 หลัก</b> แล้วกดเพิ่ม</li>
+        <li>แต่ละคนมีปุ่ม <b>🔑 ตั้ง PIN ใหม่</b>, <b>♻️ ล้างผล</b> (ให้ทำแบบทดสอบใหม่ได้), <b>🗑️ ลบ</b></li>
+      </ol>
+      <div class="gtip">เด็กเข้าระบบโดยเลือกชื่อจากดร็อปดาวน์แล้วใส่ PIN · ดู PIN จากชีตไม่ได้ (เก็บแบบเข้ารหัส) ถ้าลืมให้กดตั้ง PIN ใหม่</div>
+    </div>
+
+    <div class="gsec">
+      <h3>3) สร้างบทเรียนและคำ</h3>
+      <p>เมนู <b>⚙️ จัดการบทเรียน</b></p>
+      <ol>
+        <li>เพิ่มบทเรียน: ตั้งชื่อ ลำดับ และรูปปก (อัปจากเครื่อง หรือวางลิงก์/ไอดีรูป Google Drive)</li>
+        <li>กด <b>📝 จัดการคำ</b> แล้ววางคำ <b>บรรทัดละ 1 คำ</b> จากนั้นกดเพิ่มทั้งหมด</li>
+        <li>แต่ละคำ: <b>🎙️ เพิ่มเสียง</b> ครูอัดเสียงตัวอย่างเองได้ (เด็กกดลำโพงจะได้ยินเสียงครู ถ้าไม่อัด ระบบจะใช้เสียงสังเคราะห์), <b>⬆️ ⬇️</b> จัดลำดับ, <b>✏️</b> แก้คำ, <b>🗑️</b> ลบ</li>
+      </ol>
+    </div>
+
+    <div class="gsec">
+      <h3>4) ตรวจและให้คะแนนการอ่าน</h3>
+      <p>เมนู <b>🎧 เสียงอ่านของนักเรียน</b></p>
+      <ol>
+        <li>เลือกบทเรียน → เลือกนักเรียนที่จะตรวจ</li>
+        <li>กด <b>▶️</b> ฟังเสียงที่เด็กอัดแต่ละคำ</li>
+        <li>เลือกระดับคะแนน: น้อย / พอใช้ / ดี / ดีมาก / ดีเยี่ยม</li>
+        <li>พิมพ์ <b>คำแนะนำสั้น ๆ</b> เช่น "ออกเสียง ร ล ให้ชัดขึ้น" แล้วกดบันทึก — เด็กและผู้ปกครองจะเห็นในหน้าบทเรียน (คะแนนจะกระพริบ)</li>
+      </ol>
+    </div>
+
+    <div class="gsec">
+      <h3>5) ดูภาพรวมและออกรายงาน</h3>
+      <ul>
+        <li><b>📊 แดชบอร์ด</b>: จำนวนนักเรียน บทเรียน เสียงอ่าน และตารางความก้าวหน้าของทุกคน</li>
+        <li><b>📄 รายงานนักเรียน</b>: เลือกเด็ก → ได้รายงานหน้าเดียว (คะแนน คำแนะนำ ตราที่ได้) กด <b>🖨️ พิมพ์ / บันทึก PDF</b> เพื่อส่งผู้ปกครอง</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
+      <h3>6) การตั้งค่าทั่วไป</h3>
+      <ul>
+        <li>เปลี่ยนรหัสผ่านบัญชีครู</li>
+        <li><b>🏅 ตั้งค่าตราสะสม</b>: ปรับชื่อ ไอคอน และเกณฑ์การได้ตรา (อ่านครบกี่บท / ส่งทดสอบกี่บท / ได้คะแนนระดับใดขึ้นไป) เพิ่มหรือลบตราได้ แล้วกดบันทึก มีผลกับนักเรียนทุกคน</li>
+        <li><b>♻️ เริ่มเทอมใหม่</b>: ล้างความก้าวหน้า ผลทดสอบ และเสียงอ่านของทุกคน เพื่อเริ่มต้นใหม่ (นักเรียนทำแบบทดสอบได้อีกครั้ง) — ย้อนกลับไม่ได้</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
+      <h3>7) เคล็ดลับและการแก้ปัญหา</h3>
+      <ul>
+        <li><b>เด็กอัดเสียงไม่ได้</b>: ให้เปิดเว็บด้วย Chrome/Safari (ไม่ใช่เปิดในแอปไลน์/เฟซบุ๊ก) และกด "อนุญาต/Allow" ไมโครโฟน</li>
+        <li><b>เข้าระบบไม่ได้</b>: ตรวจ PIN (ตั้งใหม่ได้) — ใส่ผิด 3 ครั้งจะถูกล็อก 30 นาที</li>
+        <li><b>ติดตั้งเป็นแอป</b>: กดปุ่ม "ติดตั้งแอป" ในหน้าเข้าระบบหรือในเมนู เพื่อเพิ่มลงหน้าจอโฮม เปิดเต็มจอเหมือนแอปจริง</li>
+        <li><b>สำรองข้อมูล</b>: คัดลอกไฟล์ Google Sheet เก็บไว้เป็นระยะ เพื่อความปลอดภัยของข้อมูล</li>
+      </ul>
     </div>
   </div>
 </section>
@@ -706,12 +819,14 @@ const TEACHER_MENU = [
   { go:"recordings", label:"🎧 เสียงอ่านของนักเรียน" },
   { go:"report",     label:"📄 รายงานนักเรียน" },
   { go:"settings",   label:"🛠️ การตั้งค่าทั่วไป" },
+  { go:"guide",      label:"📖 คู่มือครู" },
   { go:"logout",     label:"🚪 ออกจากระบบ" }
 ];
 const STUDENT_MENU = [
   { go:"lessons", label:"📚 บทเรียน" },
   { go:"test",    label:"🎤 ทดสอบการอ่าน" },
   { go:"badges",  label:"🏅 ตราสะสม" },
+  { go:"help",    label:"❓ วิธีใช้งาน" },
   { go:"logout",  label:"🚪 ออกจากระบบ" }
 ];
 let menuOpen = false;
@@ -751,6 +866,8 @@ function navTo(go){
     case "admin":      goAdmin();      break;
     case "recordings": goRecordings(); break;
     case "report":     goReport();     break;
+    case "help":       goHelp();       break;
+    case "guide":      goGuide();      break;
     case "settings":   goSettings();   break;
     case "install":    installApp();   return;
     case "logout":     doLogout();     return;
@@ -1444,6 +1561,10 @@ function renderReport(username){
       </div>
     </div>`;
 }
+
+/* ===== คู่มือการใช้งาน ===== */
+function goHelp(){ show("view-help"); }
+function goGuide(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error"); show("view-guide"); }
 
 /* ===== การตั้งค่าทั่วไป (เปลี่ยนรหัสผ่านครู + เริ่มเทอมใหม่) ===== */
 async function goSettings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
