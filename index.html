@@ -2,8 +2,17 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>อ่านสนุก ป.5</title>
+<!-- PWA: ติดตั้งลงหน้าจอเครื่องได้ -->
+<meta name="theme-color" content="#16a3a3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="อ่านสนุก">
+<link rel="apple-touch-icon" href="https://i.ibb.co/m72jfbM/image.png">
+<link rel="icon" href="https://i.ibb.co/m72jfbM/image.png">
+<link id="manifest-link" rel="manifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thai+2:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
@@ -175,6 +184,10 @@ textarea{resize:vertical;min-height:150px}
 /* การ์ดคำที่อัดเสียงแล้ว (หน้าทดสอบ) */
 .word-card.done{background:#f3edff;border:3px solid var(--purple)}
 .word-card.done .star{opacity:1;transform:scale(1)}
+/* แถบเตือนเรื่องไมโครโฟนบนมือถือ */
+.warn-banner{background:#fff7e6;color:#8a5a00;border:2px solid #ffd980;border-radius:14px;
+  padding:12px 16px;margin:12px 0;font-size:.98rem;line-height:1.5}
+.warn-banner.err{background:#fff0f0;color:#b3261e;border-color:#ffb3b3}
 /* recorder overlay */
 .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9996;background:rgba(40,49,73,.45);padding:18px}
 .rec-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:26px;width:100%;max-width:440px;text-align:center}
@@ -222,6 +235,7 @@ textarea{resize:vertical;min-height:150px}
         <input id="password" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"></div>
       <button class="btn" id="auth-submit" type="submit" style="width:100%">เข้าสู่ระบบ</button>
     </form>
+    <button class="link-btn" id="install-btn" type="button" style="display:none">📲 ติดตั้งแอปลงเครื่อง</button>
   </div>
 </section>
 
@@ -266,6 +280,7 @@ textarea{resize:vertical;min-height:150px}
       <button class="mini" id="test-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
       <h2 class="display" id="test-title"></h2>
       <div id="test-grade-banner" class="grade-banner"></div>
+      <div id="test-mic-warning" class="warn-banner" style="display:none"></div>
       <p class="progress-text" id="test-progress">อัดแล้ว 0 / 0 คำ</p>
       <div class="mascot-row"><span class="chick">🐥</span>
         <span class="bubble" id="test-bubble">กดไมโครโฟนเพื่ออัดเสียงอ่านของหนูนะ!</span></div>
@@ -424,6 +439,15 @@ textarea{resize:vertical;min-height:150px}
   </div>
 </div>
 
+<!-- คำแนะนำติดตั้งแอป (สำหรับ iOS / เบราว์เซอร์ที่ไม่มีปุ่มติดตั้งอัตโนมัติ) -->
+<div id="install-help" class="overlay">
+  <div class="rec-box">
+    <h3 id="install-help-title">📲 ติดตั้งแอปลงเครื่อง</h3>
+    <div id="install-help-body" class="hint" style="text-align:left;font-size:1rem;line-height:1.7"></div>
+    <div class="rec-actions"><button class="btn btn--ghost" id="install-help-close">เข้าใจแล้ว</button></div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 <div id="loading"><div class="box"><div class="chick">🐥</div><p id="loading-text">กำลังโหลด...</p></div></div>
 <div id="confetti"></div>
@@ -468,6 +492,69 @@ function celebrate(){ const e=["🎉","⭐","🎈","🌟","🥳","✨","🏆"], 
     layer.appendChild(s);setTimeout(()=>s.remove(),3000);} }
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+/* ===== PWA: ติดตั้งลงหน้าจอเครื่อง (มือถือ) ===== */
+const APP_ICON = "https://i.ibb.co/m72jfbM/image.png";
+function isStandalone(){ return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches
+  || window.navigator.standalone === true; }
+function isiOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream; }
+function inAppBrowser(){ return /(FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|MicroMessenger|TikTok|GSA)/i.test(navigator.userAgent||""); }
+
+/* สร้าง manifest แบบฝังในหน้า (ไม่ต้องอัปไฟล์แยก) เพื่อให้ติดตั้งได้ */
+(function setupManifest(){
+  try{
+    const dir = location.origin + location.pathname.replace(/[^/]*$/, "");
+    const manifest = {
+      name: "อ่านสนุก ป.5", short_name: "อ่านสนุก",
+      description: "ฝึกอ่านคำภาษาไทย สำหรับชั้น ป.5",
+      start_url: location.href.split("#")[0], scope: dir,
+      display: "standalone", orientation: "portrait",
+      background_color: "#eef6ff", theme_color: "#16a3a3", lang: "th",
+      icons: [
+        { src: APP_ICON, sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: APP_ICON, sizes: "512x512", type: "image/png", purpose: "any" }
+      ]
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:"application/manifest+json"}));
+    const link = document.getElementById("manifest-link");
+    if(link) link.setAttribute("href", url);
+  }catch(_){}
+})();
+
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); deferredPrompt=e; });
+window.addEventListener("appinstalled",()=>{ deferredPrompt=null;
+  const b=$("install-btn"); if(b) b.style.display="none"; toast("ติดตั้งแอปแล้ว 🎉","success"); });
+
+/* แสดงปุ่มติดตั้งบนหน้าเข้าสู่ระบบ ถ้ายังไม่ได้เปิดแบบติดตั้ง */
+function maybeShowInstall(){ const b=$("install-btn"); if(!b) return;
+  b.style.display = isStandalone() ? "none" : "inline-block"; }
+
+async function installApp(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(_){}
+    deferredPrompt=null; const b=$("install-btn"); if(b) b.style.display="none";
+    return;
+  }
+  showInstallHelp(isiOS() ? "ios" : "generic");
+}
+function showInstallHelp(kind){
+  const body=$("install-help-body");
+  if(kind==="ios"){
+    body.innerHTML = "เปิดหน้านี้ด้วย <strong>Safari</strong> แล้วทำตามนี้:<br>"+
+      "1) แตะปุ่ม <strong>แชร์</strong> (ไอคอนสี่เหลี่ยมมีลูกศรชี้ขึ้น ⬆️)<br>"+
+      "2) เลื่อนหา <strong>“เพิ่มไปยังหน้าจอโฮม”</strong> (Add to Home Screen)<br>"+
+      "3) แตะ <strong>“เพิ่ม”</strong> มุมขวาบน เป็นอันเสร็จ 🎉";
+  }else{
+    body.innerHTML = "เปิดเมนูของเบราว์เซอร์ (ปุ่ม <strong>⋮</strong> หรือ <strong>⋯</strong> มุมจอ) "+
+      "แล้วเลือก <strong>“ติดตั้งแอป”</strong> หรือ <strong>“เพิ่มลงในหน้าจอหลัก”</strong> (Add to Home screen)<br><br>"+
+      (inAppBrowser() ? "ตอนนี้กำลังเปิดในแอปอื่นอยู่ แนะนำให้เปิดด้วย <strong>Chrome</strong> หรือ <strong>Safari</strong> ก่อนนะ" : "");
+  }
+  $("install-help").style.display="flex";
+}
+$("install-btn") && $("install-btn").addEventListener("click", installApp);
+$("install-help-close") && $("install-help-close").addEventListener("click", ()=>{ $("install-help").style.display="none"; });
+
 /* ===== เมนูขีด 3 ขีด (แฮมเบอร์เกอร์) ===== */
 /* เมนูของครู (7 ข้อ) และเมนูของนักเรียน (เรียบง่าย) */
 const TEACHER_MENU = [
@@ -488,7 +575,12 @@ let menuOpen = false;
 
 function buildMenu(){
   const panel = $("menu-panel"); panel.innerHTML = "";
-  const items = isTeacher() ? TEACHER_MENU : STUDENT_MENU;
+  let items = (isTeacher() ? TEACHER_MENU : STUDENT_MENU).slice();
+  // ถ้ายังไม่ได้ติดตั้งเป็นแอป เพิ่มเมนู "ติดตั้งแอป" ไว้เหนือปุ่มออกจากระบบ
+  if(!isStandalone()){
+    items = items.filter(x=>x.go!=="logout")
+      .concat([{go:"install",label:"📲 ติดตั้งแอปลงเครื่อง"},{go:"logout",label:"🚪 ออกจากระบบ"}]);
+  }
   items.forEach(it=>{
     const b = document.createElement("button");
     b.className = "menu-item"; b.dataset.go = it.go; b.setAttribute("role","menuitem");
@@ -515,6 +607,7 @@ function navTo(go){
     case "admin":      goAdmin();      break;
     case "recordings": goRecordings(); break;
     case "settings":   goSettings();   break;
+    case "install":    installApp();   return;
     case "logout":     doLogout();     return;
   }
   setActiveMenu(go);
@@ -578,7 +671,7 @@ function routeHome(){ if(isTeacher()){ goDashboard(); setActiveMenu("dashboard")
   else { goLessons(); setActiveMenu("lessons"); } }
 
 function doLogout(){ localStorage.removeItem("session");
-  state={user:null,token:null}; closeMenu(); $("appbar").style.display="none"; show("view-login"); }
+  state={user:null,token:null}; closeMenu(); $("appbar").style.display="none"; show("view-login"); maybeShowInstall(); }
 
 /* ===== หน้าบทเรียน (นักเรียน / ครูดูตัวอย่าง) ===== */
 $("back-lessons").addEventListener("click",goLessons);
@@ -723,6 +816,7 @@ async function openTestLesson(lesson){ testCurrentLesson=lesson;
       api("getWords",{lessonId:lesson.id}), api("getMyLessonTest",{lessonId:lesson.id})]);
     testWords=words; testBlobs={}; loading(false);
     const banner=$("test-grade-banner"); banner.className="grade-banner"; banner.style.display="none";
+    const warn=$("test-mic-warning"); warn.style.display="none";
     if(t && (t.status==="submitted" || t.status==="graded")){
       // ทำไปแล้ว -> ล็อก ทำได้ครั้งเดียว
       $("test-word-grid").style.display="none";
@@ -742,10 +836,35 @@ async function openTestLesson(lesson){ testCurrentLesson=lesson;
       $("test-word-grid").style.display="";
       $("test-progress").style.display="block";
       $("test-locked").style.display="none";
+      showMicWarning();          // เตือนเรื่องไมโครโฟนบนมือถือ ถ้าจำเป็น
       renderTestWords();
     }
     $("test-detail-mode").scrollIntoView({behavior:"smooth"});
   }catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ตรวจว่าเครื่อง/เบราว์เซอร์อัดเสียงได้ไหม */
+function recordingSupport(){
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || !window.MediaRecorder)
+    return { ok:false, reason:"unsupported" };
+  if(inAppBrowser()) return { ok:true, reason:"inapp" };
+  return { ok:true, reason:"" };
+}
+/* แสดงแถบเตือนเรื่องไมค์ในหน้าทดสอบ */
+function showMicWarning(){
+  const warn=$("test-mic-warning"); const sup=recordingSupport();
+  if(!sup.ok){
+    warn.className="warn-banner err"; warn.style.display="block";
+    warn.innerHTML="⚠️ เครื่องหรือเบราว์เซอร์นี้ยังอัดเสียงไม่ได้ "+
+      "ลองเปิดเว็บนี้ด้วยแอป <strong>Chrome</strong> หรือ <strong>Safari</strong> แล้วลองใหม่นะ "+
+      "(หรือให้คุณครูช่วยเลือกไฟล์เสียงจากเครื่องแทนได้)";
+  }else if(sup.reason==="inapp"){
+    warn.className="warn-banner"; warn.style.display="block";
+    warn.innerHTML="💡 ถ้าแตะไมค์แล้วอัดเสียงไม่ได้ ให้เปิดหน้านี้ใน <strong>Chrome/Safari</strong> "+
+      "โดยกดปุ่ม <strong>⋯</strong> มุมจอ แล้วเลือก “เปิดในเบราว์เซอร์”";
+  }else{
+    warn.style.display="none";
+  }
+}
 
 function renderTestWords(){ const grid=$("test-word-grid"); grid.innerHTML="";
   if(!testWords.length){ grid.innerHTML=`<p class="muted">บทเรียนนี้ยังไม่มีคำ 🐥</p>`; return; }
@@ -1145,6 +1264,8 @@ $("rec-file").addEventListener("change",(e)=>{ const file=e.target.files[0]; if(
   $("rec-status").textContent="เลือกไฟล์แล้ว: "+file.name+" — ฟังก่อนได้ ถ้าโอเคกดบันทึก"; });
 
 $("rec-start").addEventListener("click",async()=>{
+  const sup=recordingSupport();
+  if(!sup.ok){ toast("เครื่องนี้อัดเสียงไม่ได้ ลองเปิดด้วย Chrome/Safari หรือเลือกไฟล์เสียงจากเครื่องแทน","error"); return; }
   try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const mime=pickAudioMime();
     const mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
     rec.mr=mr; rec.chunks=[]; rec.stream=stream; rec.blob=null;
@@ -1157,7 +1278,15 @@ $("rec-start").addEventListener("click",async()=>{
     $("rec-start").style.display="none";$("rec-stop").style.display="inline-flex";
     $("rec-save").style.display="none";$("rec-audio").style.display="none";
     $("rec-status").textContent="⏺️ กำลังอัด... ออกเสียงได้เลย"; }
-  catch(err){ toast("ใช้ไมโครโฟนไม่ได้: "+err.message,"error"); } });
+  catch(err){
+    let msg="ใช้ไมโครโฟนไม่ได้";
+    const n=err&&err.name;
+    if(n==="NotAllowedError"||n==="SecurityError") msg="ยังไม่ได้อนุญาตให้ใช้ไมโครโฟน — กรุณากด “อนุญาต/Allow” เมื่อเบราว์เซอร์ถาม แล้วลองใหม่";
+    else if(n==="NotFoundError"||n==="DevicesNotFoundError") msg="ไม่พบไมโครโฟนในเครื่องนี้";
+    else if(n==="NotReadableError") msg="ไมโครโฟนถูกแอปอื่นใช้อยู่ ปิดแอปที่ใช้ไมค์แล้วลองใหม่";
+    else if(inAppBrowser()) msg="อัดเสียงในแอปนี้ไม่ได้ ให้เปิดหน้านี้ใน Chrome/Safari แล้วลองใหม่";
+    $("rec-status").textContent=msg; toast(msg,"error");
+  } });
 
 $("rec-stop").addEventListener("click",()=>{ if(rec.mr&&rec.mr.state!=="inactive")rec.mr.stop();
   $("rec-stop").style.display="none"; $("rec-start").style.display="inline-flex"; });
@@ -1186,7 +1315,7 @@ function closeRec(){ if(rec.stream)rec.stream.getTracks().forEach(t=>t.stop());
 (function init(){ const saved=localStorage.getItem("session");
   if(saved){ try{ state=JSON.parse(saved);
     if(state.token&&state.user){ setSession(state.user,state.token); routeHome(); return; } }catch(_){} }
-  show("view-login"); })();
+  show("view-login"); maybeShowInstall(); })();
 </script>
 </body>
 </html>
