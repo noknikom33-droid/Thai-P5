@@ -254,10 +254,9 @@ textarea{resize:vertical;min-height:150px}
     <div id="login-pick">
       <h2 class="display" style="margin-bottom:10px">เลือกชื่อของหนู 👇</h2>
       <div class="field">
-        <label for="roster-select">รายชื่อนักเรียน</label>
+        <label for="roster-select">รายชื่อนักเรียน (แตะเพื่อเลือกชื่อ)</label>
         <select id="roster-select" style="font-size:1.15rem"><option value="">— เลือกชื่อ —</option></select>
       </div>
-      <button class="btn" id="roster-next" style="width:100%">ถัดไป →</button>
       <p id="roster-empty" class="muted" style="display:none;margin-top:10px">ยังไม่มีรายชื่อนักเรียน — ให้คุณครูเพิ่มนักเรียนก่อนนะ 🐣</p>
       <button class="link-btn" id="to-teacher" type="button">เข้าสู่ระบบสำหรับครู →</button>
     </div>
@@ -739,13 +738,12 @@ async function loadRoster(){
     $("roster-empty").textContent="โหลดรายชื่อไม่ได้ — ลองรีเฟรช หรือเข้าสู่ระบบสำหรับครู";
   }
 }
-$("roster-next").addEventListener("click",()=>{
+$("roster-select").addEventListener("change",()=>{
   const u=$("roster-select").value;
-  if(!u) return toast("เลือกชื่อก่อนนะ","error");
+  if(!u) return;
   const s=rosterList.find(x=>String(x.username)===u);
   if(s) pickStudent(s);
 });
-$("roster-select").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("roster-next").click(); });
 function pickStudent(s){ pickedStudent=s; pinValue="";
   $("login-pick").style.display="none"; $("login-teacher").style.display="none";
   $("login-pin").style.display="block";
@@ -783,7 +781,8 @@ async function submitPin(){
 }
 $("to-teacher").addEventListener("click",()=>{ $("login-pick").style.display="none"; $("login-pin").style.display="none"; $("login-teacher").style.display="block"; });
 $("to-student").addEventListener("click",resetLoginUI);
-$("pin-back").addEventListener("click",()=>{ pinValue=""; updatePinDots(); $("login-pin").style.display="none"; $("login-pick").style.display="block"; });
+$("pin-back").addEventListener("click",()=>{ pinValue=""; updatePinDots(); $("roster-select").value="";
+  $("login-pin").style.display="none"; $("login-pick").style.display="block"; });
 
 function setSession(user,token){ state.user=user; state.token=token;
   localStorage.setItem("session",JSON.stringify(state));
