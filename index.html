@@ -133,6 +133,12 @@ img{display:block;max-width:100%}
 .badge-prog{margin-top:6px;font-weight:700;color:var(--teal-dark)}
 .badge-card.locked .badge-prog{color:var(--ink-soft)}
 .badge-summary{font-family:"Baloo Thai 2",cursive;color:var(--teal-dark);font-size:1.2rem;margin-top:8px}
+/* แถวตั้งค่าตรา (ฝั่งครู) */
+.bc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%}
+.bc-row input,.bc-row select{font-family:inherit;font-size:1rem;padding:9px 10px;border:2px solid #e2e6f3;border-radius:12px;background:#f9faff}
+.bc-icon{width:56px;text-align:center;font-size:1.4rem}
+.bc-name{flex:1 1 130px}
+.bc-num{width:80px}
 .minibar{background:#e3e8f5;border-radius:999px;height:10px;overflow:hidden;margin-top:8px}
 .minibar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
 
@@ -478,6 +484,18 @@ textarea{resize:vertical;min-height:150px}
 <section id="view-settings" class="view">
   <div class="container">
     <h2 class="display" style="margin-bottom:12px">🛠️ การตั้งค่าทั่วไป</h2>
+
+    <div class="section">
+      <h3 class="display" style="margin-bottom:8px">🏅 ตั้งค่าตราสะสม</h3>
+      <p class="hint">ปรับชื่อ ไอคอน และเงื่อนไขการได้ตราเองได้ เช่น มีหลายบทเรียนก็เพิ่มเกณฑ์ให้สูงขึ้น · เงื่อนไขมี 3 แบบ: อ่านครบกี่บท / ส่งทดสอบกี่บท / ได้คะแนนระดับใดขึ้นไป (กดบันทึกเมื่อแก้เสร็จ)</p>
+      <ul id="badge-config-list" class="list"></ul>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <button class="mini" id="badge-add">➕ เพิ่มตรา</button>
+        <button class="mini" id="badge-reset">↩️ คืนค่าเริ่มต้น</button>
+      </div>
+      <button class="btn" id="badge-save" style="margin-top:14px">💾 บันทึกตราสะสม</button>
+    </div>
+
     <div class="section">
       <h3 class="display" style="margin-bottom:8px">เปลี่ยนรหัสผ่านของฉัน</h3>
       <p class="hint">เปลี่ยนรหัสผ่านบัญชีครูที่กำลังใช้งานอยู่ (อย่างน้อย 6 ตัวอักษร)</p>
@@ -1086,25 +1104,24 @@ $("test-submit").addEventListener("click",async()=>{
 /* ===== ตราสะสม (นักเรียน) — คำนวณจากความก้าวหน้า + ผลทดสอบ ===== */
 async function goBadges(){ if(state.user.role!=="student") return goLessons();
   show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
-  try{ const [progress,tests]=await Promise.all([api("getMyProgress"),api("getMyTests")]);
-    loading(false); renderBadges(computeBadges(progress,tests)); }
+  try{ const [progress,tests,config]=await Promise.all([
+      api("getMyProgress"),api("getMyTests"),api("getBadgeConfig")]);
+    loading(false); renderBadges(computeBadges(progress,tests,config)); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
-function computeBadges(progress,tests){
+const GRADE_RANK={"น้อย":1,"พอใช้":2,"ดี":3,"ดีมาก":4,"ดีเยี่ยม":5};
+function computeBadges(progress,tests,config){
   const read=(progress||[]).filter(p=>Number(p.totalCount)>0 && Number(p.readCount)>=Number(p.totalCount)).length;
   const sent=(tests||[]).filter(t=>t.status==="submitted"||t.status==="graded").length;
-  const grades=(tests||[]).map(t=>t.grade).filter(Boolean);
-  const vgood=grades.some(g=>g==="ดีมาก"||g==="ดีเยี่ยม");
-  const excel=grades.some(g=>g==="ดีเยี่ยม");
-  return [
-    {ic:"📖", nm:"อ่านครบบทแรก", got:read>=1, hint:"อ่านครบทุกคำ 1 บท", prog:Math.min(read,1)+"/1 บท"},
-    {ic:"📚", nm:"นักอ่านขยัน",  got:read>=3, hint:"อ่านครบ 3 บท",      prog:Math.min(read,3)+"/3 บท"},
-    {ic:"🏆", nm:"นักอ่านตัวยง",  got:read>=5, hint:"อ่านครบ 5 บท",      prog:Math.min(read,5)+"/5 บท"},
-    {ic:"🎤", nm:"กล้าพูด",      got:sent>=1, hint:"ส่งแบบทดสอบ 1 บท",  prog:Math.min(sent,1)+"/1 บท"},
-    {ic:"🎙️", nm:"นักพากย์",     got:sent>=3, hint:"ส่งแบบทดสอบ 3 บท",  prog:Math.min(sent,3)+"/3 บท"},
-    {ic:"⭐", nm:"ดาวเด่น",      got:vgood,   hint:"ได้คะแนนดีมากขึ้นไป", prog:vgood?"ปลดล็อกแล้ว":"ยังไม่ได้"},
-    {ic:"👑", nm:"สุดยอดนักอ่าน", got:excel,   hint:"ได้คะแนนดีเยี่ยม",   prog:excel?"ปลดล็อกแล้ว":"ยังไม่ได้"}
-  ];
+  let maxGrade=0; (tests||[]).forEach(t=>{ const r=GRADE_RANK[t.grade]||0; if(r>maxGrade)maxGrade=r; });
+  const list=Array.isArray(config)?config:[];
+  return list.map(b=>{
+    let got=false, hint="", prog="";
+    if(b.type==="test"){ const v=Math.max(1,Number(b.value)||1); got=sent>=v; hint="ส่งแบบทดสอบ "+v+" บท"; prog=Math.min(sent,v)+"/"+v+" บท"; }
+    else if(b.type==="grade"){ const need=GRADE_RANK[b.value]||3; got=maxGrade>=need; hint='ได้คะแนน "'+b.value+'" ขึ้นไป'; prog=got?"ปลดล็อกแล้ว":"ยังไม่ได้"; }
+    else { const v=Math.max(1,Number(b.value)||1); got=read>=v; hint="อ่านครบ "+v+" บท"; prog=Math.min(read,v)+"/"+v+" บท"; }
+    return {ic:b.icon||"🏅", nm:b.name||"ตรา", got, hint, prog};
+  });
 }
 
 function renderBadges(list){
@@ -1322,7 +1339,72 @@ async function deleteRecordingItem(r){
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 /* ===== การตั้งค่าทั่วไป (เปลี่ยนรหัสผ่านครู + เริ่มเทอมใหม่) ===== */
-function goSettings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error"); show("view-settings"); }
+async function goSettings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-settings");
+  loading(true,"กำลังโหลดการตั้งค่า...");
+  try{ badgeCfg=await api("getBadgeConfig"); }catch(_){ badgeCfg=[]; }
+  loading(false); if(!Array.isArray(badgeCfg)) badgeCfg=[]; renderBadgeEditor(); }
+
+/* ===== ตั้งค่าตราสะสม (ครู) ===== */
+let badgeCfg=[];
+const BADGE_GRADES=["น้อย","พอใช้","ดี","ดีมาก","ดีเยี่ยม"];
+
+function renderBadgeEditor(){
+  const ul=$("badge-config-list"); ul.innerHTML="";
+  if(!badgeCfg.length){ ul.innerHTML=`<li class="muted">ยังไม่มีตรา กดปุ่ม "เพิ่มตรา" หรือ "คืนค่าเริ่มต้น"</li>`; return; }
+  badgeCfg.forEach((b,i)=>{ const li=document.createElement("li"); li.className="row";
+    const isGrade=b.type==="grade";
+    const gradeOpts=BADGE_GRADES.map(g=>`<option value="${g}" ${String(b.value)===g?"selected":""}>${g}</option>`).join("");
+    li.innerHTML=`<span class="bc-row">
+        <input class="bc-icon" maxlength="4" value="${esc(b.icon||"🏅")}" aria-label="ไอคอน">
+        <input class="bc-name" value="${esc(b.name||"")}" placeholder="ชื่อตรา" aria-label="ชื่อตรา">
+        <select class="bc-type" aria-label="เงื่อนไข">
+          <option value="read"  ${b.type==="read"?"selected":""}>อ่านครบ…บท</option>
+          <option value="test"  ${b.type==="test"?"selected":""}>ส่งทดสอบ…บท</option>
+          <option value="grade" ${isGrade?"selected":""}>ได้คะแนนระดับ…</option>
+        </select>
+        <input class="bc-num" type="number" min="1" value="${isGrade?3:(Number(b.value)||1)}" aria-label="จำนวนบท" style="${isGrade?"display:none":""}">
+        <select class="bc-grade" aria-label="ระดับคะแนน" style="${isGrade?"":"display:none"}">${gradeOpts}</select>
+        <button class="mini mini--danger bc-del" aria-label="ลบตรา">🗑️</button>
+      </span>`;
+    const typeSel=li.querySelector(".bc-type"), num=li.querySelector(".bc-num"), grd=li.querySelector(".bc-grade");
+    typeSel.addEventListener("change",()=>{ const g=typeSel.value==="grade"; num.style.display=g?"none":""; grd.style.display=g?"":"none"; });
+    li.querySelector(".bc-del").addEventListener("click",()=>{ badgeCfg=collectBadgeEditor(); badgeCfg.splice(i,1); renderBadgeEditor(); });
+    ul.appendChild(li); });
+}
+function collectBadgeEditor(){
+  const out=[];
+  $("badge-config-list").querySelectorAll("li.row").forEach((li,i)=>{
+    const type=li.querySelector(".bc-type").value;
+    const value= type==="grade" ? li.querySelector(".bc-grade").value
+                                 : Math.max(1, Number(li.querySelector(".bc-num").value)||1);
+    out.push({
+      id:(badgeCfg[i]&&badgeCfg[i].id)||("b"+Date.now()+"_"+i),
+      icon:(li.querySelector(".bc-icon").value.trim()||"🏅"),
+      name:(li.querySelector(".bc-name").value.trim()||"ตรา"),
+      type:type, value:value
+    });
+  });
+  return out;
+}
+$("badge-add").addEventListener("click",()=>{ badgeCfg=collectBadgeEditor();
+  badgeCfg.push({id:"b"+Date.now(),icon:"🏅",name:"ตราใหม่",type:"read",value:1}); renderBadgeEditor(); });
+$("badge-reset").addEventListener("click",()=>{ if(!confirm("คืนค่าตราสะสมเป็นชุดเริ่มต้น? (ยังไม่บันทึกจนกว่าจะกดบันทึก)"))return;
+  badgeCfg=[
+    {id:"b1",icon:"📖",name:"อ่านครบบทแรก",type:"read",value:1},
+    {id:"b2",icon:"📚",name:"นักอ่านขยัน",type:"read",value:3},
+    {id:"b3",icon:"🏆",name:"นักอ่านตัวยง",type:"read",value:5},
+    {id:"b4",icon:"🎤",name:"กล้าพูด",type:"test",value:1},
+    {id:"b5",icon:"🎙️",name:"นักพากย์",type:"test",value:3},
+    {id:"b6",icon:"⭐",name:"ดาวเด่น",type:"grade",value:"ดีมาก"},
+    {id:"b7",icon:"👑",name:"สุดยอดนักอ่าน",type:"grade",value:"ดีเยี่ยม"}
+  ]; renderBadgeEditor(); });
+$("badge-save").addEventListener("click",async()=>{
+  const badges=collectBadgeEditor();
+  loading(true,"กำลังบันทึกตราสะสม...");
+  try{ await api("saveBadgeConfig",{badges}); badgeCfg=badges; loading(false);
+    toast("บันทึกตราสะสมแล้ว 🏅","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
 
 $("cp-save").addEventListener("click",async()=>{
   const oldPassword=$("cp-old").value, newPassword=$("cp-new").value;
