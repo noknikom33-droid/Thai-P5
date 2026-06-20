@@ -118,6 +118,21 @@ img{display:block;max-width:100%}
 .lesson-card .body h3{font-size:1.4rem;color:var(--ink)}
 .lesson-card .body .meta{color:var(--ink-soft);font-size:.95rem;margin-top:4px}
 .meta-grade{color:#e0301e;font-weight:700;animation:blink 1.1s steps(1,end) infinite}
+/* กล่องคำแนะนำจากครู (เด็ก/ผู้ปกครองเห็น) */
+.teacher-note{display:none;margin:10px 0;padding:13px 16px;border-radius:16px;background:#eef7ff;
+  border:2px solid #cfe6ff;color:#1f5a8a;font-size:1.05rem;line-height:1.55}
+.teacher-note.show{display:block}
+.teacher-note b{color:#0f7d7d}
+/* ตราสะสม */
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:14px}
+.badge-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:20px 14px;text-align:center;border:3px solid var(--sun)}
+.badge-card.locked{border-color:#e2e6f3;background:#f7f9ff;filter:grayscale(.5);opacity:.85}
+.badge-ic{font-size:3rem;line-height:1}
+.badge-nm{font-family:"Baloo Thai 2",cursive;font-weight:700;font-size:1.1rem;margin-top:8px;color:var(--ink)}
+.badge-hint{color:var(--ink-soft);font-size:.9rem;margin-top:4px;min-height:2.6em}
+.badge-prog{margin-top:6px;font-weight:700;color:var(--teal-dark)}
+.badge-card.locked .badge-prog{color:var(--ink-soft)}
+.badge-summary{font-family:"Baloo Thai 2",cursive;color:var(--teal-dark);font-size:1.2rem;margin-top:8px}
 .minibar{background:#e3e8f5;border-radius:999px;height:10px;overflow:hidden;margin-top:8px}
 .minibar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
 
@@ -301,12 +316,24 @@ textarea{resize:vertical;min-height:150px}
   </div>
 </section>
 
+<!-- หน้านักเรียน: ตราสะสม -->
+<section id="view-badges" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:6px">🏅 ตราสะสมของฉัน</h2>
+    <p class="muted">เก็บตราให้ครบโดยการอ่านบทเรียนและทำแบบทดสอบนะ!</p>
+    <div id="badge-summary" class="badge-summary"></div>
+    <div id="badge-grid" class="badge-grid"></div>
+    <p class="app-credit">พัฒนาโดย <strong>ครูศิริพงษ์ ธิวรรณ</strong> · โรงเรียนนิคมสร้างตนเอง 3</p>
+  </div>
+</section>
+
 <!-- หน้าคำในบทเรียน -->
 <section id="view-lesson" class="view">
   <div class="container">
     <button class="mini" id="back-lessons" style="margin-bottom:14px">⬅️ กลับ</button>
     <h2 class="display" id="lesson-title"></h2>
     <div id="lesson-grade" class="grade-banner"></div>
+    <div id="lesson-comment" class="teacher-note"></div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
     <p class="progress-text" id="progress-text">อ่านแล้ว 0 / 0 คำ</p>
     <div class="mascot-row"><span class="chick">🐥</span>
@@ -330,6 +357,7 @@ textarea{resize:vertical;min-height:150px}
       <button class="mini" id="test-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
       <h2 class="display" id="test-title"></h2>
       <div id="test-grade-banner" class="grade-banner"></div>
+      <div id="test-comment" class="teacher-note"></div>
       <div id="test-mic-warning" class="warn-banner" style="display:none"></div>
       <p class="progress-text" id="test-progress">อัดแล้ว 0 / 0 คำ</p>
       <div class="mascot-row"><span class="chick">🐥</span>
@@ -626,6 +654,7 @@ const TEACHER_MENU = [
 const STUDENT_MENU = [
   { go:"lessons", label:"📚 บทเรียน" },
   { go:"test",    label:"🎤 ทดสอบการอ่าน" },
+  { go:"badges",  label:"🏅 ตราสะสม" },
   { go:"logout",  label:"🚪 ออกจากระบบ" }
 ];
 let menuOpen = false;
@@ -660,6 +689,7 @@ function navTo(go){
     case "dashboard":  goDashboard();  break;
     case "lessons":    goLessons();    break;
     case "test":       goTest();       break;
+    case "badges":     goBadges();     break;
     case "students":   goStudents();   break;
     case "admin":      goAdmin();      break;
     case "recordings": goRecordings(); break;
@@ -873,11 +903,16 @@ async function openLesson(lesson){ currentLessonId=lesson.id;
 /* ดึงผลทดสอบของบทนี้มาแสดงเป็นป้ายกระพริบ (เฉพาะนักเรียน และเมื่อครูประเมินแล้ว) */
 async function showLessonGrade(lessonId){
   const banner=$("lesson-grade"); banner.className="grade-banner"; banner.style.display="none";
+  const note=$("lesson-comment"); note.className="teacher-note"; note.innerHTML="";
   if(state.user.role!=="student") return;
   try{ const t=await api("getMyLessonTest",{lessonId});
     if(t && t.status==="graded" && t.grade){
       banner.className="grade-banner show "+gradeClass(t.grade);
       banner.textContent="🌟 คุณครูประเมินการอ่านของหนู: "+t.grade+" 🌟";
+    }
+    if(t && t.comment){
+      note.className="teacher-note show";
+      note.innerHTML="💬 <b>คำแนะนำจากคุณครู:</b> "+esc(t.comment);
     }
   }catch(_){}
 }
@@ -948,6 +983,7 @@ async function openTestLesson(lesson){ testCurrentLesson=lesson;
       api("getWords",{lessonId:lesson.id}), api("getMyLessonTest",{lessonId:lesson.id})]);
     testWords=words; testBlobs={}; loading(false);
     const banner=$("test-grade-banner"); banner.className="grade-banner"; banner.style.display="none";
+    const note=$("test-comment"); note.className="teacher-note"; note.innerHTML="";
     const warn=$("test-mic-warning"); warn.style.display="none";
     if(t && (t.status==="submitted" || t.status==="graded")){
       // ทำไปแล้ว -> ล็อก ทำได้ครั้งเดียว
@@ -963,6 +999,7 @@ async function openTestLesson(lesson){ testCurrentLesson=lesson;
       }else{
         $("test-locked").innerHTML=`<p style="font-size:1.15rem">✅ ส่งแบบทดสอบแล้ว กำลังรอคุณครูประเมิน 🐥</p>`;
       }
+      if(t.comment){ note.className="teacher-note show"; note.innerHTML="💬 <b>คำแนะนำจากคุณครู:</b> "+esc(t.comment); }
     }else{
       // ยังไม่เคยทำ -> แสดงคำให้อัดเสียง (มีแต่ไมโครโฟน ไม่มีลำโพง)
       $("test-word-grid").style.display="";
@@ -1045,6 +1082,45 @@ $("test-submit").addEventListener("click",async()=>{
     celebrate(); toast("ส่งแบบทดสอบให้คุณครูแล้ว 🎤","success");
     openTestLesson(testCurrentLesson);   // โหลดใหม่ -> เข้าสู่สถานะล็อก
   }catch(err){ loading(false); toast("ส่งไม่สำเร็จ: "+err.message,"error"); } });
+
+/* ===== ตราสะสม (นักเรียน) — คำนวณจากความก้าวหน้า + ผลทดสอบ ===== */
+async function goBadges(){ if(state.user.role!=="student") return goLessons();
+  show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
+  try{ const [progress,tests]=await Promise.all([api("getMyProgress"),api("getMyTests")]);
+    loading(false); renderBadges(computeBadges(progress,tests)); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+function computeBadges(progress,tests){
+  const read=(progress||[]).filter(p=>Number(p.totalCount)>0 && Number(p.readCount)>=Number(p.totalCount)).length;
+  const sent=(tests||[]).filter(t=>t.status==="submitted"||t.status==="graded").length;
+  const grades=(tests||[]).map(t=>t.grade).filter(Boolean);
+  const vgood=grades.some(g=>g==="ดีมาก"||g==="ดีเยี่ยม");
+  const excel=grades.some(g=>g==="ดีเยี่ยม");
+  return [
+    {ic:"📖", nm:"อ่านครบบทแรก", got:read>=1, hint:"อ่านครบทุกคำ 1 บท", prog:Math.min(read,1)+"/1 บท"},
+    {ic:"📚", nm:"นักอ่านขยัน",  got:read>=3, hint:"อ่านครบ 3 บท",      prog:Math.min(read,3)+"/3 บท"},
+    {ic:"🏆", nm:"นักอ่านตัวยง",  got:read>=5, hint:"อ่านครบ 5 บท",      prog:Math.min(read,5)+"/5 บท"},
+    {ic:"🎤", nm:"กล้าพูด",      got:sent>=1, hint:"ส่งแบบทดสอบ 1 บท",  prog:Math.min(sent,1)+"/1 บท"},
+    {ic:"🎙️", nm:"นักพากย์",     got:sent>=3, hint:"ส่งแบบทดสอบ 3 บท",  prog:Math.min(sent,3)+"/3 บท"},
+    {ic:"⭐", nm:"ดาวเด่น",      got:vgood,   hint:"ได้คะแนนดีมากขึ้นไป", prog:vgood?"ปลดล็อกแล้ว":"ยังไม่ได้"},
+    {ic:"👑", nm:"สุดยอดนักอ่าน", got:excel,   hint:"ได้คะแนนดีเยี่ยม",   prog:excel?"ปลดล็อกแล้ว":"ยังไม่ได้"}
+  ];
+}
+
+function renderBadges(list){
+  const got=list.filter(b=>b.got).length;
+  $("badge-summary").textContent=`ได้แล้ว ${got} / ${list.length} ตรา`+(got===list.length?" — ครบทุกตราแล้ว! 🎉":"");
+  const grid=$("badge-grid"); grid.innerHTML="";
+  list.forEach(b=>{ const d=document.createElement("div");
+    d.className="badge-card"+(b.got?"":" locked");
+    d.innerHTML=`<div class="badge-ic">${b.got?b.ic:"🔒"}</div>
+      <div class="badge-nm">${esc(b.nm)}</div>
+      <div class="badge-hint">${b.got?"ได้รับแล้ว 🎉":esc(b.hint)}</div>
+      <div class="badge-prog">${esc(b.prog)}</div>`;
+    grid.appendChild(d); });
+  if(got===list.length && got>0 && !sessionStorage.getItem("badgeAll")){
+    sessionStorage.setItem("badgeAll","1"); celebrate(); }
+}
 
 /* ===== แดชบอร์ดครู (สถิติ + ความก้าวหน้า) ===== */
 async function goDashboard(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
@@ -1175,17 +1251,24 @@ function renderGradeBox(){
                  : "นักเรียนยังไม่ได้ส่งแบบทดสอบบทนี้ (ครูให้คะแนนล่วงหน้าได้)";
   box.innerHTML=`<div class="section">
     <h3 class="display" style="margin-bottom:8px">📋 ให้คะแนนการอ่าน — ${esc(student?(student.displayName||student.username):sel.value)}</h3>
-    <p class="hint">สถานะ: ${status}<br>เลือกระดับคะแนนเพื่อบันทึก แล้วผลจะไปกระพริบโชว์ในบทเรียนของนักเรียน</p>
-    <div class="grade-row">${btns}</div></div>`;
-  box.querySelectorAll(".grade-btn").forEach(b=>b.onclick=()=>saveGrade(sel.value,b.dataset.g)); }
+    <p class="hint">สถานะ: ${status}<br>เลือกระดับคะแนน แล้วผลจะไปกระพริบโชว์ในบทเรียนของนักเรียน</p>
+    <div class="grade-row">${btns}</div>
+    <div class="field" style="margin-top:14px">
+      <label for="grade-comment">💬 คำแนะนำสั้น ๆ ถึงเด็ก/ผู้ปกครอง (ไม่บังคับ)</label>
+      <textarea id="grade-comment" style="min-height:70px" placeholder="เช่น ออกเสียง ร ล ให้ชัดขึ้น"></textarea>
+    </div>
+    <button class="mini" id="grade-comment-save" style="margin-top:6px">💾 บันทึกคำแนะนำ</button></div>`;
+  $("grade-comment").value = (t&&t.comment) ? t.comment : "";
+  box.querySelectorAll(".grade-btn").forEach(b=>b.onclick=()=>saveGrade(sel.value,b.dataset.g,$("grade-comment").value));
+  $("grade-comment-save").onclick=()=>saveGrade(sel.value,cur,$("grade-comment").value); }
 
-async function saveGrade(username,grade){
-  loading(true,"กำลังบันทึกคะแนน...");
-  try{ await api("gradeTest",{username,lessonId:recCurrentLesson.id,grade}); loading(false);
+async function saveGrade(username,grade,comment){
+  loading(true,"กำลังบันทึก...");
+  try{ await api("gradeTest",{username,lessonId:recCurrentLesson.id,grade,comment:comment||""}); loading(false);
     let t=(recState.tests||[]).find(t=>String(t.username).trim()===username && String(t.lessonId)===String(recCurrentLesson.id));
-    if(t){ t.grade=grade; t.status="graded"; }
-    else { (recState.tests=recState.tests||[]).push({username,lessonId:recCurrentLesson.id,grade,status:"graded"}); }
-    toast("บันทึกคะแนน “"+grade+"” แล้ว","success"); renderGradeBox(); }
+    if(t){ t.grade=grade; t.comment=comment||""; if(grade)t.status="graded"; }
+    else { (recState.tests=recState.tests||[]).push({username,lessonId:recCurrentLesson.id,grade,comment:comment||"",status:grade?"graded":"submitted"}); }
+    toast("บันทึกแล้ว"+(grade?" (คะแนน “"+grade+"”)":""),"success"); renderGradeBox(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 function renderRecList(){
