@@ -201,6 +201,9 @@ img{display:block;max-width:100%}
 .list{list-style:none;padding:0;margin:14px 0 0}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:var(--radius);background:#f7f9ff;margin-bottom:10px}
 .row.active{background:#e7fbfb;border:2px solid var(--teal)}
+.row.playing{background:#e7fbfb;box-shadow:inset 0 0 0 2px var(--teal)}
+.row.flagged{background:#fff4f4;box-shadow:inset 0 0 0 2px #ffc2c2}
+.mini.flag-on{background:#ffe9e9;color:var(--danger)}
 .row .main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .row .thumb{width:84px;height:48px;object-fit:cover;border-radius:8px;background:#dfe7f5}
 .row .word-text{font-size:1.4rem}
@@ -496,7 +499,13 @@ textarea{resize:vertical;min-height:150px}
             <select id="rec-filter-student"></select></div>
           <button class="mini" id="rec-refresh" style="margin-bottom:2px">🔄 รีเฟรช</button>
         </div>
-        <p class="hint" style="margin-top:10px">กด ▶️ เพื่อฟังเสียงอ่าน หรือ 🗑️ เพื่อลบ</p>
+        <p class="hint" style="margin-top:10px">กด ▶️ ฟังทีละคำ · 🚩 ติดธงคำที่อ่านพลาด · หรือกด "เล่นต่อเนื่อง" เพื่อฟังรวดเดียวทุกคำ</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+          <button class="mini" id="rec-playall">⏯️ เล่นต่อเนื่องทุกคำ</button>
+          <button class="mini mini--danger" id="rec-stopall" style="display:none">⏹️ หยุด</button>
+          <label class="rec-line" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="rec-flag-only"> แสดงเฉพาะคำที่ติดธง 🚩</label>
+        </div>
         <ul id="rec-list" class="list"></ul>
       </div>
       <div id="rec-grade-box" style="display:none"></div>
@@ -1408,6 +1417,8 @@ function openRecLesson(lesson){ recCurrentLesson=lesson;
   let opts=`<option value="">— นักเรียนทุกคน —</option>`;
   recState.students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
   sel.innerHTML=opts; sel.value="";
+  if(typeof stopAllRecordings==="function") stopAllRecordings();
+  $("rec-flag-only").checked=false;
   renderRecList(); renderGradeBox();
   $("rec-detail-mode").scrollIntoView({behavior:"smooth"}); }
 
@@ -1445,31 +1456,71 @@ async function saveGrade(username,grade,comment){
     toast("บันทึกแล้ว"+(grade?" (คะแนน “"+grade+"”)":""),"success"); renderGradeBox(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
+let recCurrentRows=[];
 function renderRecList(){
   const sel=$("rec-filter-student");
-  const titleMap={}; recState.lessons.forEach(l=>titleMap[l.id]=l.title);
   let rows=(recState.recordings||[]).filter(r=>String(r.lessonId)===String(recCurrentLesson.id));
   if(sel.value) rows=rows.filter(r=>String(r.username).trim()===sel.value);
+  if($("rec-flag-only").checked) rows=rows.filter(r=>r.flagged);
+  recCurrentRows=rows;
   const ul=$("rec-list"); ul.innerHTML="";
-  if(!rows.length){ ul.innerHTML=`<li class="muted">ยังไม่มีเสียงอ่านในบทนี้${sel.value?" ของนักเรียนคนนี้":""}</li>`; return; }
-  rows.forEach(r=>{ const li=document.createElement("li"); li.className="row";
+  if(!rows.length){ ul.innerHTML=`<li class="muted">${$("rec-flag-only").checked?"ไม่มีคำที่ติดธงในนี้":("ยังไม่มีเสียงอ่านในบทนี้"+(sel.value?" ของนักเรียนคนนี้":""))}</li>`;
+    $("rec-playall").disabled=true; return; }
+  $("rec-playall").disabled=false;
+  rows.forEach(r=>{ const li=document.createElement("li"); li.className="row"+(r.flagged?" flagged":""); li.dataset.rid=r.id;
     let when="-"; try{ when=new Date(r.createdAt).toLocaleString("th-TH"); }catch(_){}
     li.innerHTML=`<span class="main"><span>
-        <strong class="rec-line">📖 ${esc(r.wordText||"-")}</strong>
+        <strong class="rec-line">${r.flagged?"🚩 ":"📖 "}${esc(r.wordText||"-")}</strong>
         <div class="rec-line">👧 ${esc(r.displayName||r.username)}</div>
         <div class="rec-line muted">🕒 ${esc(when)}</div></span></span>
       <span class="acts">
         <button class="mini" data-a="play">▶️ ฟัง</button>
+        <button class="mini ${r.flagged?'flag-on':''}" data-a="flag">${r.flagged?"🚩 ติดธงแล้ว":"🚩 ติดธง"}</button>
         <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
     li.querySelector('[data-a="play"]').onclick=(e)=>playRecording(r,e.currentTarget);
+    li.querySelector('[data-a="flag"]').onclick=(e)=>toggleFlag(r,e.currentTarget);
     li.querySelector('[data-a="del"]').onclick=()=>deleteRecordingItem(r);
     ul.appendChild(li); }); }
 
+/* ติดธง/ปลดธงคำที่เด็กอ่านพลาด */
+async function toggleFlag(r,btn){
+  const next=!r.flagged; btn.disabled=true;
+  try{ await api("setRecordingFlag",{id:r.id,flagged:next}); r.flagged=next;
+    if(dashState&&dashState.recordings){ const d=dashState.recordings.find(x=>x.id===r.id); if(d)d.flagged=next; }
+    btn.disabled=false; renderRecList();
+    toast(next?"ติดธงคำนี้แล้ว 🚩":"ปลดธงแล้ว","success"); }
+  catch(err){ btn.disabled=false; toast(err.message,"error"); } }
+
+/* ===== เล่นต่อเนื่องทุกคำ (ช่วยครูฟังรวดเดียว ไม่ต้องกดทีละคำ) ===== */
+let recAllPlaying=false, recAllIdx=0;
+function updatePlayAllBtn(){ $("rec-playall").style.display=recAllPlaying?"none":"inline-flex";
+  $("rec-stopall").style.display=recAllPlaying?"inline-flex":"none"; }
+function clearRecHighlight(){ $("rec-list").querySelectorAll(".row.playing").forEach(li=>li.classList.remove("playing")); }
+function highlightRec(id){ clearRecHighlight(); const li=$("rec-list").querySelector(`[data-rid="${id}"]`);
+  if(li){ li.classList.add("playing"); li.scrollIntoView({block:"nearest",behavior:"smooth"}); } }
+function playAllRecordings(){ if(!recCurrentRows.length)return; recAllPlaying=true; recAllIdx=0; updatePlayAllBtn(); playAllNext(); }
+function playAllNext(){
+  if(!recAllPlaying || recAllIdx>=recCurrentRows.length){ const done=recAllIdx>=recCurrentRows.length&&recCurrentRows.length;
+    stopAllRecordings(); if(done) toast("เล่นครบทุกคำแล้ว ✅","success"); return; }
+  const r=recCurrentRows[recAllIdx]; highlightRec(r.id);
+  resolveAudioSrc(r.fileId).then(src=>{ if(!recAllPlaying)return;
+    try{ if(recPlayer)recPlayer.pause(); }catch(_){}
+    recPlayer=new Audio(src);
+    recPlayer.onended=()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,500); };
+    recPlayer.onerror=()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,200); };
+    recPlayer.play().catch(()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,200); });
+  }).catch(()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,200); }); }
+function stopAllRecordings(){ recAllPlaying=false; try{ if(recPlayer)recPlayer.pause(); }catch(_){} clearRecHighlight(); updatePlayAllBtn(); }
+$("rec-playall").addEventListener("click",playAllRecordings);
+$("rec-stopall").addEventListener("click",stopAllRecordings);
+$("rec-flag-only").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); });
+
 $("rec-back").addEventListener("click",()=>{
+  stopAllRecordings();
   $("rec-detail-mode").style.display="none"; $("rec-lessons-mode").style.display="block";
   renderRecLessons(); });
-$("rec-filter-student").addEventListener("change",()=>{ renderRecList(); renderGradeBox(); });
-$("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return;
+$("rec-filter-student").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); renderGradeBox(); });
+$("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return; stopAllRecordings();
   loading(true,"กำลังรีเฟรช...");
   try{ const [recordings,tests]=await Promise.all([api("getRecordings"),api("getTests")]);
     recState.recordings=recordings; recState.tests=tests; loading(false);
@@ -1496,13 +1547,13 @@ async function deleteRecordingItem(r){
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 /* ===== รายงานรายบุคคล (ครู) — พิมพ์/บันทึก PDF ส่งผู้ปกครอง ===== */
-let reportState={students:[],lessons:[],progress:[],tests:[],badges:[]};
+let reportState={students:[],lessons:[],progress:[],tests:[],badges:[],recordings:[]};
 async function goReport(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
   show("view-report"); $("report-area").innerHTML=""; $("report-print").disabled=true;
   loading(true,"กำลังโหลดข้อมูลรายงาน...");
-  try{ const [students,lessons,progress,tests,badges]=await Promise.all([
-      api("listStudents"),api("getLessons"),api("getProgressAll"),api("getTests"),api("getBadgeConfig")]);
-    reportState={students,lessons,progress,tests,badges:Array.isArray(badges)?badges:[]};
+  try{ const [students,lessons,progress,tests,badges,recordings]=await Promise.all([
+      api("listStudents"),api("getLessons"),api("getProgressAll"),api("getTests"),api("getBadgeConfig"),api("getRecordings")]);
+    reportState={students,lessons,progress,tests,badges:Array.isArray(badges)?badges:[],recordings:recordings||[]};
     loading(false);
     const sel=$("report-student");
     let opts=`<option value="">— เลือกนักเรียน —</option>`;
@@ -1538,6 +1589,13 @@ function renderReport(username){
   const badgeHtml = badges.length
     ? `<div class="rbadges">`+badges.map(b=>`<span class="rbadge">${b.ic} ${esc(b.nm)}</span>`).join("")+`</div>`
     : `<p class="muted">ยังไม่ได้รับตรา</p>`;
+  // คำที่ครูติดธงไว้ (ควรฝึกเพิ่ม) — ไม่ซ้ำคำ
+  const flaggedWords=[...new Set((reportState.recordings||[])
+    .filter(r=>String(r.username).trim()===key && r.flagged)
+    .map(r=>String(r.wordText||"").trim()).filter(Boolean))];
+  const flaggedHtml = flaggedWords.length
+    ? `<div class="rbadges">`+flaggedWords.map(w=>`<span class="rbadge" style="background:#fff4f4;border-color:#ffc2c2">🚩 ${esc(w)}</span>`).join("")+`</div>`
+    : `<p class="muted">— ไม่มี —</p>`;
   let when=""; try{ when=new Date().toLocaleDateString("th-TH",{year:"numeric",month:"long",day:"numeric"}); }catch(_){ when=""; }
   const teacher=(state.user&&state.user.displayName)||"คุณครู";
 
@@ -1553,6 +1611,8 @@ function renderReport(username){
         <tr><th>บทเรียน</th><th>อ่านแล้ว</th><th>ผลทดสอบ</th><th>คำแนะนำจากคุณครู</th></tr>
         ${rows}
       </table>
+      <h3 class="display" style="margin:18px 0 6px;color:var(--teal-dark)">🚩 คำที่ควรฝึกเพิ่ม</h3>
+      ${flaggedHtml}
       <h3 class="display" style="margin:18px 0 6px;color:var(--teal-dark)">🏅 ตราสะสมที่ได้รับ (${badges.length})</h3>
       ${badgeHtml}
       <div class="rsign">
