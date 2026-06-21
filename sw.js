@@ -1,53 +1,1907 @@
-/* Service Worker — อ่านสนุก ป.5
-   ทำให้เปิดแอปได้แม้เน็ตหลุด (แคชหน้าแอป + ฟอนต์ + รูปไอคอน/ปก)
-   หมายเหตุ: การเรียก API (Google Apps Script) เป็น POST จะไม่ถูกแคช
-            เพราะข้อมูลต้องสด ๆ — ออฟไลน์จะเปิดแอปได้ แต่ข้อมูลสดต้องมีเน็ต
-   วิธีใช้: วางไฟล์นี้ไว้โฟลเดอร์เดียวกับ index.html ในรีโป GitHub
-   อยากอัปเดตแคชเวอร์ชันใหม่: เปลี่ยนเลข CACHE ด้านล่าง */
-const CACHE = 'arnsanook-p5-v1';
-const SHELL = ['./', './index.html'];
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>อ่านสนุก ป.5</title>
+<!-- PWA: ติดตั้งลงหน้าจอเครื่องได้ -->
+<meta name="theme-color" content="#16a3a3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="อ่านสนุก">
+<link rel="apple-touch-icon" href="https://i.ibb.co/m72jfbM/image.png">
+<link rel="icon" href="https://i.ibb.co/m72jfbM/image.png">
+<link id="manifest-link" rel="manifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Thai+2:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   สไตล์ทั้งหมด (ออกแบบเพื่อนักเรียน ป.5: อ่านง่าย ปุ่มใหญ่ สดใส)
+   ============================================================ */
+:root{
+  --bg-top:#eef6ff; --bg-bottom:#fef3ff;
+  --teal:#16a3a3; --teal-dark:#0f7d7d;
+  --sky:#3b9df0; --sun:#ffcf3f; --purple:#8b6cd9;
+  --ink:#283149; --ink-soft:#6c7390;
+  --white:#fff; --danger:#ff5d5d;
+  --radius:18px; --radius-lg:26px;
+  --shadow:0 8px 22px rgba(40,49,73,.12);
+  --shadow-h:0 12px 30px rgba(40,49,73,.2);
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:"Sarabun",sans-serif;
+  background:linear-gradient(160deg,var(--bg-top),var(--bg-bottom)) fixed;-webkit-tap-highlight-color:transparent}
+h1,h2,h3,.display{font-family:"Baloo Thai 2",cursive;font-weight:700;line-height:1.2;margin:0}
+button{font-family:inherit;cursor:pointer;border:none}
+img{display:block;max-width:100%}
+.btn{font-family:"Baloo Thai 2",cursive;font-size:1.12rem;padding:13px 24px;border-radius:var(--radius);
+  background:var(--teal);color:#fff;box-shadow:var(--shadow);min-height:50px;transition:transform .12s,box-shadow .12s}
+.btn:hover{box-shadow:var(--shadow-h)}
+.btn:active{transform:translateY(2px) scale(.98)}
+.btn--ghost{background:#fff;color:var(--teal-dark)}
+.btn--sun{background:var(--sun);color:var(--ink)}
+.btn--danger{background:#fff0f0;color:var(--danger)}
+.btn:focus-visible{outline:4px solid #bfe7ff;outline-offset:2px}
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
-  self.skipWaiting();
-});
+.appbar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 20px;background:rgba(255,255,255,.72);backdrop-filter:blur(6px);position:sticky;top:0;z-index:50}
+.appbar .brand{font-size:1.5rem;color:var(--teal-dark);display:flex;align-items:center;gap:8px}
+.container{max-width:1080px;margin:0 auto;padding:22px 16px 70px}
+.view{display:none}
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
-});
+/* ===== เมนูขีด 3 ขีด (แฮมเบอร์เกอร์) ===== */
+.menu-wrap{position:relative}
+.menu-btn{font-size:1.7rem;background:#fff;color:var(--teal-dark);width:54px;height:54px;border-radius:16px;
+  box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;line-height:1;transition:transform .12s}
+.menu-btn:hover{box-shadow:var(--shadow-h)}
+.menu-btn:active{transform:translateY(2px) scale(.97)}
+.menu-btn:focus-visible{outline:4px solid #bfe7ff;outline-offset:2px}
+.menu-panel{position:absolute;top:calc(100% + 12px);left:0;background:#fff;border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-h);padding:10px;min-width:268px;max-width:86vw;z-index:80;display:none;flex-direction:column;gap:6px}
+.menu-panel.open{display:flex;animation:menuIn .18s}
+@keyframes menuIn{from{opacity:0;transform:translateY(-10px)}}
+.menu-item{font-family:"Baloo Thai 2",cursive;font-size:1.12rem;text-align:left;padding:14px 16px;border-radius:14px;
+  background:#f7f9ff;color:var(--ink);min-height:52px;transition:transform .1s,background .15s}
+.menu-item:hover{background:#e7fbfb}
+.menu-item.active{background:#e7fbfb;box-shadow:inset 0 0 0 2px var(--teal);color:var(--teal-dark)}
+.menu-item:active{transform:scale(.98)}
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;                 // ไม่แตะ POST (การเรียก API)
+/* หน้าเข้าสู่ระบบ */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:32px 28px}
+.login-card{width:100%;max-width:420px;text-align:center}
+.login-card .mascot{font-size:4.5rem}
+.mascot-img{width:120px;height:120px;object-fit:contain;margin:0 auto 6px;display:block}
+.brand-logo{width:34px;height:34px;object-fit:contain;vertical-align:middle}
+.login-card h1{color:var(--teal-dark);font-size:2rem;margin:6px 0 2px}
+.login-card .sub{color:var(--ink-soft);margin:0 0 22px}
+.field{text-align:left;margin-bottom:15px}
+.field label{display:block;font-weight:600;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;font-family:inherit;font-size:1.08rem;padding:12px 15px;
+  border:2px solid #e2e6f3;border-radius:var(--radius);background:#f9faff}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--teal)}
+.link-btn{background:none;color:var(--teal-dark);font-size:1rem;text-decoration:underline;padding:10px;margin-top:6px}
 
-  let url;
-  try { url = new URL(req.url); } catch (_) { return; }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;   // ข้าม blob:/data:
-  if (url.hostname.indexOf('script.google.com') >= 0) return;          // ไม่แคช API
+/* หน้าเข้าระบบนักเรียน: เลือกชื่อ + ใส่ PIN */
+.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin:8px 0 14px}
+.name-card{background:#f7f9ff;border:2px solid #e2e6f3;border-radius:18px;padding:14px 8px;display:flex;
+  flex-direction:column;align-items:center;gap:6px;min-height:98px;justify-content:center;transition:transform .12s,border-color .15s}
+.name-card:hover{border-color:var(--teal)}
+.name-card:active{transform:scale(.96)}
+.name-card .ava{font-size:2.3rem;line-height:1}
+.name-card .nm{font-family:"Baloo Thai 2",cursive;font-weight:700;font-size:1.02rem;color:var(--ink);text-align:center;word-break:break-word}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:10px 0 20px}
+.pin-dots span{width:18px;height:18px;border-radius:50%;background:#e3e8f5;transition:transform .15s,background .15s}
+.pin-dots span.on{background:var(--teal);transform:scale(1.15)}
+.pin-dots.bad span{background:var(--danger)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:300px;margin:0 auto}
+.key{font-family:"Baloo Thai 2",cursive;font-size:1.7rem;padding:15px 0;border-radius:16px;background:#fff;color:var(--ink);box-shadow:var(--shadow);min-height:62px}
+.key:active{transform:translateY(2px) scale(.97)}
+.key--fn{background:#eef1fa;font-size:1.35rem}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.credit{margin-top:20px;padding-top:14px;border-top:1px dashed #e2e6f3;color:var(--ink-soft);font-size:.9rem;line-height:1.6}
+.credit strong{color:var(--teal-dark)}
+.app-credit{text-align:center;color:var(--ink-soft);font-size:.82rem;margin-top:30px;opacity:.85}
+.app-credit strong{color:var(--teal-dark)}
 
-  // เปิดหน้าเว็บ (navigation): เอาเน็ตก่อน ถ้าไม่ได้ค่อยใช้หน้าที่แคชไว้
-  if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req)
-        .then((r) => { const cp = r.clone(); caches.open(CACHE).then((c) => c.put('./index.html', cp)).catch(() => {}); return r; })
-        .catch(() => caches.match('./index.html').then((m) => m || caches.match('./')))
-    );
+/* หน้าบทเรียน (การ์ดรูปปกแนวนอน) */
+.greeting{font-size:1.5rem;margin-bottom:4px}
+.lesson-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:18px}
+.lesson-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;text-align:left;padding:0;transition:transform .15s,box-shadow .15s}
+.lesson-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h)}
+.lesson-card:active{transform:scale(.99)}
+.cover{width:100%;aspect-ratio:16/9;object-fit:cover;background:#dfe7f5}
+.cover--empty{display:flex;align-items:center;justify-content:center;font-size:3rem;color:#9fb0cf}
+.lesson-card .body{padding:16px 18px}
+.lesson-card .body h3{font-size:1.4rem;color:var(--ink)}
+.lesson-card .body .meta{color:var(--ink-soft);font-size:.95rem;margin-top:4px}
+.meta-grade{color:#e0301e;font-weight:700;animation:blink 1.1s steps(1,end) infinite}
+/* กล่องคำแนะนำจากครู (เด็ก/ผู้ปกครองเห็น) */
+.teacher-note{display:none;margin:10px 0;padding:13px 16px;border-radius:16px;background:#eef7ff;
+  border:2px solid #cfe6ff;color:#1f5a8a;font-size:1.05rem;line-height:1.55}
+.teacher-note.show{display:block}
+.teacher-note b{color:#0f7d7d}
+/* ตราสะสม */
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:14px}
+.badge-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:20px 14px;text-align:center;border:3px solid var(--sun)}
+.badge-card.locked{border-color:#e2e6f3;background:#f7f9ff;filter:grayscale(.5);opacity:.85}
+.badge-ic{font-size:3rem;line-height:1}
+.badge-nm{font-family:"Baloo Thai 2",cursive;font-weight:700;font-size:1.1rem;margin-top:8px;color:var(--ink)}
+.badge-hint{color:var(--ink-soft);font-size:.9rem;margin-top:4px;min-height:2.6em}
+.badge-prog{margin-top:6px;font-weight:700;color:var(--teal-dark)}
+.badge-card.locked .badge-prog{color:var(--ink-soft)}
+.badge-summary{font-family:"Baloo Thai 2",cursive;color:var(--teal-dark);font-size:1.2rem;margin-top:8px}
+/* แถวตั้งค่าตรา (ฝั่งครู) */
+.bc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%}
+.bc-row input,.bc-row select{font-family:inherit;font-size:1rem;padding:9px 10px;border:2px solid #e2e6f3;border-radius:12px;background:#f9faff}
+.bc-icon{width:56px;text-align:center;font-size:1.4rem}
+.bc-name{flex:1 1 130px}
+.bc-num{width:80px}
+
+/* รายงานรายบุคคล (พิมพ์/บันทึก PDF) */
+#report-area{margin-top:16px}
+.report{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:30px;max-width:820px;margin:0 auto}
+.report .rhead{text-align:center;border-bottom:3px solid var(--teal);padding-bottom:14px;margin-bottom:16px}
+.report .rhead h2{color:var(--teal-dark)}
+.report .rmeta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:1rem;margin-bottom:6px}
+.report table{width:100%;border-collapse:collapse;margin:12px 0}
+.report th,.report td{border:1px solid #d8deec;padding:9px 11px;text-align:left;font-size:.95rem;vertical-align:top}
+.report th{background:#f1f5ff;color:var(--ink-soft)}
+.report .rgrade{font-weight:700;white-space:nowrap}
+.report .rbadges{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.report .rbadge{display:inline-flex;align-items:center;gap:6px;background:#fffdf3;border:2px solid var(--sun);border-radius:14px;padding:6px 12px;font-weight:700;font-size:.95rem}
+.report .rsign{margin-top:36px;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.report .rsign .col{flex:1 1 200px;text-align:center;color:var(--ink-soft);font-size:.95rem}
+.report .rsign .line{margin-top:40px;border-top:1px dotted #9fb0cf;padding-top:6px}
+@media print{
+  body{background:#fff}
+  .appbar,.menu-panel,#report-controls,.no-print,#toasts,#loading,#confetti{display:none !important}
+  .container{padding:0;max-width:100%}
+  .report{box-shadow:none;border-radius:0;max-width:100%;padding:0}
+}
+.minibar{background:#e3e8f5;border-radius:999px;height:10px;overflow:hidden;margin-top:8px}
+.minibar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
+
+/* หน้าคำในบทเรียน */
+.progress-track{background:#e3e8f5;border-radius:999px;height:20px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--sun),#ff9f1c);transition:width .4s}
+.progress-text{text-align:center;color:var(--ink-soft);font-weight:600;margin:8px 0}
+.mascot-row{display:flex;align-items:center;gap:12px;margin:6px 0 18px}
+.mascot-row .chick{font-size:2.8rem}
+.bubble{background:#fff;font-size:1.15rem;padding:11px 18px;border-radius:16px 16px 16px 4px;box-shadow:var(--shadow)}
+.word-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+.word-card{position:relative;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:28px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:16px;transition:transform .15s}
+.word-card.read{background:#fffdf3;border:3px solid var(--sun)}
+.word-text{font-family:"Baloo Thai 2",cursive;font-size:2.6rem;font-weight:700;text-align:center;word-break:break-word}
+.star{position:absolute;top:8px;right:12px;font-size:1.5rem;opacity:0;transform:scale(.4);transition:.3s}
+.word-card.read .star{opacity:1;transform:scale(1)}
+.pop{animation:pop .3s}
+@keyframes pop{40%{transform:scale(1.07)}}
+.speaker{width:70px;height:70px;border-radius:50%;background:var(--sky);color:#fff;font-size:1.9rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:transform .12s}
+.speaker:hover{background:#2b86d6}
+.speaker:active{transform:scale(.9)}
+.speaker:focus-visible{outline:4px solid #bfe7ff;outline-offset:3px}
+.word-actions{display:flex;gap:12px;align-items:center;justify-content:center}
+.mic{width:70px;height:70px;border-radius:50%;background:var(--purple);color:#fff;font-size:1.7rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);transition:transform .12s}
+.mic:hover{background:#785bc4}
+.mic:active{transform:scale(.9)}
+.mic:focus-visible{outline:4px solid #e0d4ff;outline-offset:3px}
+
+/* รายการเสียงอ่านของนักเรียน (แดชบอร์ดครู) */
+.rec-line{font-size:.92rem;color:var(--ink-soft)}
+.rec-line strong{color:var(--ink);font-size:1.05rem}
+
+/* หน้าครู / แดชบอร์ด */
+.section{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:22px;margin-bottom:22px}
+.section h2{color:var(--teal-dark);margin-bottom:14px}
+.inline{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.inline .field{margin:0;flex:1 1 180px}
+.list{list-style:none;padding:0;margin:14px 0 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:var(--radius);background:#f7f9ff;margin-bottom:10px}
+.row.active{background:#e7fbfb;border:2px solid var(--teal)}
+.row.playing{background:#e7fbfb;box-shadow:inset 0 0 0 2px var(--teal)}
+.row.flagged{background:#fff4f4;box-shadow:inset 0 0 0 2px #ffc2c2}
+.mini.flag-on{background:#ffe9e9;color:var(--danger)}
+.row .main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.row .thumb{width:84px;height:48px;object-fit:cover;border-radius:8px;background:#dfe7f5}
+.row .word-text{font-size:1.4rem}
+.row .acts{display:flex;gap:8px;flex-wrap:wrap}
+.mini{font-size:.92rem;padding:8px 13px;border-radius:12px;background:#fff;color:var(--ink);box-shadow:var(--shadow);min-height:40px}
+.mini:active{transform:translateY(2px)}
+.mini:disabled{opacity:.4;cursor:not-allowed}
+.mini--danger{background:#fff0f0;color:var(--danger)}
+.tag{font-size:.8rem;background:#e7fbfb;color:var(--teal-dark);padding:2px 8px;border-radius:999px}
+.muted{color:var(--ink-soft)}
+.hint{color:var(--ink-soft);font-size:.92rem;margin:4px 0 10px}
+textarea{resize:vertical;min-height:150px}
+.preview{margin-top:10px;display:none}
+.preview img{width:220px;aspect-ratio:16/9;object-fit:cover;border-radius:12px;box-shadow:var(--shadow)}
+
+/* การ์ดสถิติ */
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.stat{flex:1 1 150px;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px 20px}
+.stat .num{font-family:"Baloo Thai 2",cursive;font-size:2.2rem;color:var(--teal-dark)}
+.stat .lbl{color:var(--ink-soft)}
+
+/* ตารางความก้าวหน้า */
+.ptable{overflow-x:auto;margin-top:6px}
+.ptable table{border-collapse:collapse;min-width:100%}
+.ptable th,.ptable td{padding:10px 12px;text-align:center;border-bottom:1px solid #eef0f7;white-space:nowrap;font-size:.95rem}
+.ptable th{background:#f7f9ff;color:var(--ink-soft);position:sticky;top:0}
+.ptable td.sticky-name,.ptable th:first-child{text-align:left}
+.ptable td.sticky-name{font-weight:600}
+.cellbar{background:#e3e8f5;border-radius:999px;height:8px;width:70px;margin:0 auto 3px;overflow:hidden}
+.cellbar span{display:block;height:100%;background:linear-gradient(90deg,var(--sun),#ff9f1c)}
+
+/* ป้ายผลคะแนนกระพริบ (โชว์ในบทเรียนของนักเรียน) */
+.grade-banner{display:none;margin:12px 0;padding:14px 18px;border-radius:18px;
+  font-family:"Baloo Thai 2",cursive;font-size:1.35rem;text-align:center;font-weight:700;box-shadow:var(--shadow)}
+.grade-banner.show{display:block;animation:blink 1.1s steps(1,end) infinite}
+@keyframes blink{50%{opacity:.2}}
+.grade-banner.g-low{background:#fff0f0;color:#d23a3a}
+.grade-banner.g-fair{background:#fff7e6;color:#c98300}
+.grade-banner.g-good{background:#eefbf3;color:#2e9e6b}
+.grade-banner.g-vgood{background:#e7f4ff;color:#2b86d6}
+.grade-banner.g-excel{background:#f3edff;color:#6d4fc4}
+/* ปุ่มให้คะแนน (ฝั่งครู) */
+.grade-row{display:flex;gap:10px;flex-wrap:wrap}
+.grade-btn{font-family:"Baloo Thai 2",cursive;font-size:1.05rem;padding:11px 18px}
+.grade-btn.sel{background:var(--teal);color:#fff}
+/* การ์ดคำที่อัดเสียงแล้ว (หน้าทดสอบ) */
+.word-card.done{background:#f3edff;border:3px solid var(--purple)}
+.word-card.done .star{opacity:1;transform:scale(1)}
+/* แถบเตือนเรื่องไมโครโฟนบนมือถือ */
+.warn-banner{background:#fff7e6;color:#8a5a00;border:2px solid #ffd980;border-radius:14px;
+  padding:12px 16px;margin:12px 0;font-size:.98rem;line-height:1.5}
+.warn-banner.err{background:#fff0f0;color:#b3261e;border-color:#ffb3b3}
+/* คู่มือการใช้งาน (นักเรียน) */
+.help-steps{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.help-step{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:18px;display:flex;gap:14px;align-items:flex-start}
+.help-step .ic{flex:0 0 auto;width:56px;height:56px;border-radius:50%;background:#e7fbfb;display:flex;align-items:center;justify-content:center;font-size:1.9rem}
+.help-step .tx{flex:1}
+.help-step .tx .lbl{font-size:.85rem;color:var(--teal-dark);font-weight:700}
+.help-step .tx h3{font-size:1.2rem;color:var(--ink);margin:2px 0 4px}
+.help-step .tx p{margin:0;color:var(--ink-soft);line-height:1.6}
+.help-note{background:#fff7e6;border:2px solid #ffd980;border-radius:14px;padding:13px 16px;margin-top:16px;color:#8a5a00;line-height:1.6}
+/* คู่มือครู */
+.guide{max-width:840px;margin:0 auto}
+.guide .gsec{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:22px;margin-bottom:16px}
+.guide .gsec h3{color:var(--teal-dark);margin-bottom:10px;font-size:1.25rem}
+.guide .gsec ol,.guide .gsec ul{margin:0;padding-left:22px;line-height:1.85}
+.guide .gsec li{margin-bottom:5px}
+.guide .gsec p{line-height:1.75;color:var(--ink);margin:0 0 6px}
+.guide .gtip{background:#eef7ff;border:2px solid #cfe6ff;border-radius:14px;padding:12px 14px;margin-top:10px;color:#0f5e8a;line-height:1.6}
+/* recorder overlay */
+.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9996;background:rgba(40,49,73,.45);padding:18px}
+.rec-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:26px;width:100%;max-width:440px;text-align:center}
+.rec-box h3{color:var(--teal-dark);margin-bottom:6px}
+.rec-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+
+/* แจ้งเตือน / โหลด / ฉลอง */
+#toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;gap:10px;z-index:9999;width:calc(100% - 40px);max-width:440px}
+.toast{background:var(--ink);color:#fff;padding:13px 18px;border-radius:var(--radius);box-shadow:var(--shadow);animation:up .35s}
+.toast.success{background:#2e9e6b}.toast.error{background:var(--danger)}.toast.out{opacity:0;transition:.4s}
+@keyframes up{from{transform:translateY(20px);opacity:0}}
+#loading{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9998;background:rgba(255,255,255,.7);backdrop-filter:blur(3px)}
+#loading .box{background:#fff;border-radius:var(--radius-lg);padding:28px 38px;box-shadow:var(--shadow);text-align:center}
+#loading .chick{font-size:3rem;animation:bounce .8s infinite}
+@keyframes bounce{50%{transform:translateY(-12px)}}
+#loading p{margin:10px 0 0;color:var(--ink-soft);font-weight:600}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:9997;overflow:hidden}
+.confetti{position:absolute;top:-40px;animation:fall 2.6s ease-in forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:0}}
+@media(max-width:600px){.appbar .brand{font-size:1.3rem}.word-text{font-size:2.2rem}.lesson-grid{grid-template-columns:1fr 1fr;gap:12px}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="appbar" id="appbar" style="display:none">
+  <div class="menu-wrap" id="menu-wrap">
+    <button class="menu-btn" id="menu-btn" aria-label="เปิดเมนู" aria-haspopup="true" aria-expanded="false">☰</button>
+    <nav class="menu-panel" id="menu-panel" role="menu"></nav>
+  </div>
+  <span class="brand"><img class="brand-logo" src="https://i.ibb.co/m72jfbM/image.png" alt="ตราโรงเรียน"> อ่านสนุก <span style="font-size:1rem;color:var(--ink-soft)">ป.5</span></span>
+</header>
+
+<!-- เข้าสู่ระบบ -->
+<section id="view-login" class="view login-wrap">
+  <div class="card login-card">
+    <img class="mascot-img" src="https://i.ibb.co/m72jfbM/image.png" alt="ตราโรงเรียน">
+    <h1>อ่านสนุก</h1>
+    <p class="sub">ฝึกอ่านคำภาษาไทย สำหรับชั้น ป.5</p>
+
+    <!-- ขั้นที่ 1: นักเรียนเลือกชื่อตัวเองจากดร็อปดาวน์ -->
+    <div id="login-pick">
+      <h2 class="display" style="margin-bottom:10px">เลือกชื่อของหนู 👇</h2>
+      <div class="field">
+        <label for="roster-select">รายชื่อนักเรียน (แตะเพื่อเลือกชื่อ)</label>
+        <select id="roster-select" style="font-size:1.15rem"><option value="">— เลือกชื่อ —</option></select>
+      </div>
+      <p id="roster-empty" class="muted" style="display:none;margin-top:10px">ยังไม่มีรายชื่อนักเรียน — ให้คุณครูเพิ่มนักเรียนก่อนนะ 🐣</p>
+      <button class="link-btn" id="to-teacher" type="button">เข้าสู่ระบบสำหรับครู →</button>
+    </div>
+
+    <!-- ขั้นที่ 2: ใส่ PIN 4 หลัก -->
+    <div id="login-pin" style="display:none">
+      <h2 class="display" id="pin-greet" style="margin-bottom:4px">สวัสดี 👋</h2>
+      <p class="sub" style="margin-bottom:6px">ใส่รหัส PIN 4 หลัก</p>
+      <div class="pin-dots" id="pin-dots"><span></span><span></span><span></span><span></span></div>
+      <div class="keypad" id="keypad"></div>
+      <button class="link-btn" id="pin-back" type="button">⬅️ เลือกชื่อใหม่</button>
+    </div>
+
+    <!-- โหมดครู: ชื่อผู้ใช้ + รหัสผ่าน -->
+    <div id="login-teacher" style="display:none">
+      <h2 class="display" style="margin-bottom:16px">เข้าสู่ระบบสำหรับครู</h2>
+      <form id="auth-form">
+        <div class="field"><label for="username">ชื่อผู้ใช้</label>
+          <input id="username" type="text" placeholder="เช่น admin" autocomplete="username"></div>
+        <div class="field"><label for="password">รหัสผ่าน</label>
+          <input id="password" type="password" placeholder="รหัสผ่าน" autocomplete="current-password"></div>
+        <button class="btn" id="auth-submit" type="submit" style="width:100%">เข้าสู่ระบบ</button>
+      </form>
+      <button class="link-btn" id="to-student" type="button">⬅️ กลับไปหน้านักเรียน</button>
+    </div>
+
+    <button class="link-btn" id="install-btn" type="button" style="display:none">📲 ติดตั้งแอปลงเครื่อง</button>
+    <p class="credit">พัฒนาโดย <strong>ครูศิริพงษ์ ธิวรรณ</strong><br>โรงเรียนนิคมสร้างตนเอง 3</p>
+  </div>
+</section>
+
+<!-- หน้านักเรียน: เลือกบทเรียน -->
+<section id="view-lessons" class="view">
+  <div class="container">
+    <h2 class="greeting display" id="greeting">สวัสดี 👋</h2>
+    <p class="muted" id="lessons-subtitle">เลือกบทเรียนที่อยากฝึกอ่านได้เลย</p>
+    <div id="lesson-grid" class="lesson-grid"></div>
+    <div id="lessons-empty" class="muted" style="display:none;text-align:center;padding:40px">
+      ยังไม่มีบทเรียน 🐣 ถ้าเป็นคุณครู เข้า "จัดการบทเรียน" เพื่อเพิ่มบทเรียนได้เลย
+    </div>
+    <p class="app-credit">พัฒนาโดย <strong>ครูศิริพงษ์ ธิวรรณ</strong> · โรงเรียนนิคมสร้างตนเอง 3</p>
+  </div>
+</section>
+
+<!-- หน้านักเรียน: ตราสะสม -->
+<section id="view-badges" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:6px">🏅 ตราสะสมของฉัน</h2>
+    <p class="muted">เก็บตราให้ครบโดยการอ่านบทเรียนและทำแบบทดสอบนะ!</p>
+    <div id="badge-summary" class="badge-summary"></div>
+    <div id="badge-grid" class="badge-grid"></div>
+    <p class="app-credit">พัฒนาโดย <strong>ครูศิริพงษ์ ธิวรรณ</strong> · โรงเรียนนิคมสร้างตนเอง 3</p>
+  </div>
+</section>
+
+<!-- หน้านักเรียน: วิธีใช้งาน -->
+<section id="view-help" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:4px">❓ วิธีใช้งาน</h2>
+    <p class="muted">ทำตามขั้นตอนนี้ได้เลยนะ 🐤</p>
+    <div class="help-steps">
+      <div class="help-step"><div class="ic">🔑</div><div class="tx"><div class="lbl">ขั้นที่ 1</div>
+        <h3>เข้าสู่ระบบ</h3><p>แตะช่อง "เลือกชื่อ" หาชื่อของหนู แล้วกดรหัส PIN 4 ตัวที่คุณครูให้ ถ้ากดผิดกด ⌫ ลบได้</p></div></div>
+      <div class="help-step"><div class="ic">📚</div><div class="tx"><div class="lbl">ขั้นที่ 2</div>
+        <h3>ฝึกอ่านในบทเรียน</h3><p>ไปเมนู "บทเรียน" แตะการ์ดบท แล้วแตะปุ่ม 🔊 เพื่อฟังเสียงอ่านของแต่ละคำ อ่านตามให้คล่อง ดาว ⭐ จะขึ้นทีละคำ</p></div></div>
+      <div class="help-step"><div class="ic">🎤</div><div class="tx"><div class="lbl">ขั้นที่ 3</div>
+        <h3>ทำแบบทดสอบการอ่าน</h3><p>ไปเมนู "ทดสอบการอ่าน" เลือกบท แตะ 🎤 ที่แต่ละคำแล้วอ่านออกเสียงดัง ๆ ชัด ๆ อัดให้ครบทุกคำ</p></div></div>
+      <div class="help-step"><div class="ic">📨</div><div class="tx"><div class="lbl">ขั้นที่ 4</div>
+        <h3>ส่งให้คุณครู</h3><p>พออัดครบทุกคำ ปุ่ม "ส่งให้คุณครู" จะขึ้นมา กดส่งได้เลย — แต่ละบทส่งได้ครั้งเดียวนะ</p></div></div>
+      <div class="help-step"><div class="ic">🌟</div><div class="tx"><div class="lbl">ขั้นที่ 5</div>
+        <h3>ดูผลและคำแนะนำ</h3><p>เมื่อคุณครูตรวจแล้ว จะมีดาวกระพริบบอกคะแนน และกล่องคำแนะนำจากคุณครูในหน้าบทเรียน</p></div></div>
+      <div class="help-step"><div class="ic">🏅</div><div class="tx"><div class="lbl">ขั้นที่ 6</div>
+        <h3>เก็บตราสะสม</h3><p>ไปเมนู "ตราสะสม" ดูว่าได้ตราอะไรแล้ว ตั้งใจอ่านและทดสอบให้ครบเพื่อเก็บตราให้หมด!</p></div></div>
+    </div>
+    <p class="help-note">💡 ถ้าแตะไมค์แล้วอัดเสียงไม่ได้ ให้บอกคุณครูช่วยเปิดเว็บด้วย Chrome หรือ Safari แล้วกด "อนุญาต" ไมโครโฟนนะ</p>
+  </div>
+</section>
+
+<!-- หน้าคำในบทเรียน -->
+<section id="view-lesson" class="view">
+  <div class="container">
+    <button class="mini" id="back-lessons" style="margin-bottom:14px">⬅️ กลับ</button>
+    <h2 class="display" id="lesson-title"></h2>
+    <div id="lesson-grade" class="grade-banner"></div>
+    <div id="lesson-comment" class="teacher-note"></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <p class="progress-text" id="progress-text">อ่านแล้ว 0 / 0 คำ</p>
+    <div class="mascot-row"><span class="chick">🐥</span>
+      <span class="bubble" id="bubble">กดปุ่มลำโพงเพื่อฟังเสียงนะ!</span></div>
+    <div id="word-grid" class="word-grid"></div>
+  </div>
+</section>
+
+<!-- หน้านักเรียน: ทดสอบการอ่าน (เลือกบท -> อัดเสียงทุกคำ -> ส่ง) -->
+<section id="view-test" class="view">
+  <div class="container">
+    <!-- โหมด: เลือกบทเรียน -->
+    <div id="test-lessons-mode">
+      <h2 class="display" style="margin-bottom:6px">🎤 ทดสอบการอ่าน</h2>
+      <p class="muted">เลือกบทเรียนที่จะทดสอบ อ่านออกเสียงแล้วอัดเสียงให้ครบทุกคำ จากนั้นกดส่งให้คุณครู (แต่ละบททำได้ครั้งเดียว)</p>
+      <div id="test-lesson-grid" class="lesson-grid"></div>
+      <div id="test-lessons-empty" class="muted" style="display:none;text-align:center;padding:40px">ยังไม่มีบทเรียนให้ทดสอบ 🐣</div>
+    </div>
+    <!-- โหมด: ทำแบบทดสอบในบทที่เลือก -->
+    <div id="test-detail-mode" style="display:none">
+      <button class="mini" id="test-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
+      <h2 class="display" id="test-title"></h2>
+      <div id="test-grade-banner" class="grade-banner"></div>
+      <div id="test-comment" class="teacher-note"></div>
+      <div id="test-mic-warning" class="warn-banner" style="display:none"></div>
+      <p class="progress-text" id="test-progress">อัดแล้ว 0 / 0 คำ</p>
+      <div class="mascot-row"><span class="chick">🐥</span>
+        <span class="bubble" id="test-bubble">กดไมโครโฟนเพื่ออัดเสียงอ่านของหนูนะ!</span></div>
+      <div id="test-word-grid" class="word-grid"></div>
+      <div id="test-submit-wrap" style="text-align:center;margin-top:22px;display:none">
+        <button class="btn btn--sun" id="test-submit" style="font-size:1.3rem;padding:16px 42px">📨 ส่งให้คุณครู</button>
+      </div>
+      <div id="test-locked" class="section" style="display:none;text-align:center"></div>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: แดชบอร์ด (สถิติ + ความก้าวหน้า) -->
+<section id="view-dashboard" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:12px">📊 แดชบอร์ดครู</h2>
+    <div class="stats" id="dash-stats"></div>
+    <div class="section">
+      <h2>ความก้าวหน้าของนักเรียน</h2>
+      <p class="hint">ตัวเลขคือจำนวนคำที่อ่านแล้ว / คำทั้งหมดในแต่ละบท · ช่อง "บทล่าสุด" คือบทที่เรียนล่าสุด</p>
+      <div id="dash-progress"></div>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: เพิ่ม / จัดการนักเรียน -->
+<section id="view-students" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:12px">🧒 เพิ่ม / จัดการนักเรียน</h2>
+    <div class="section">
+      <h2>เพิ่มนักเรียนใหม่</h2>
+      <p class="hint">นักเรียนจะเข้าระบบโดย "เลือกชื่อที่แสดง" แล้วใส่ PIN 4 หลัก (ชื่อที่แสดงจะโผล่ในหน้าเลือกชื่อ)</p>
+      <div class="inline">
+        <div class="field"><label for="ds-username">ชื่อผู้ใช้ (ใช้อ้างอิงภายใน ไม่ต้องบอกเด็ก)</label>
+          <input id="ds-username" type="text" placeholder="เช่น dek01"></div>
+        <div class="field"><label for="ds-name">ชื่อที่แสดง (ให้เด็กเลือก)</label>
+          <input id="ds-name" type="text" placeholder="เช่น น้องฟ้า"></div>
+        <div class="field" style="flex:0 0 160px"><label for="ds-password">PIN (ตัวเลข 4 หลัก)</label>
+          <input id="ds-password" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="เช่น 1234"></div>
+      </div>
+      <button class="btn" id="ds-add" style="margin-top:12px">➕ เพิ่มนักเรียน</button>
+    </div>
+    <div class="section">
+      <h2>รายชื่อนักเรียนทั้งหมด</h2>
+      <ul id="student-list" class="list"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: เสียงอ่านของนักเรียน (เลือกบท -> เลือกนักเรียน) -->
+<section id="view-recordings" class="view">
+  <div class="container">
+    <!-- โหมด: เลือกบทเรียน -->
+    <div id="rec-lessons-mode">
+      <h2 class="display" style="margin-bottom:6px">🎧 เสียงอ่านของนักเรียน</h2>
+      <p class="muted">เลือกบทเรียนที่อยากตรวจเสียงอ่าน แล้วในบทนั้นจะเลือกนักเรียนที่จะตรวจได้</p>
+      <div id="rec-lesson-grid" class="lesson-grid"></div>
+      <div id="rec-lessons-empty" class="muted" style="display:none;text-align:center;padding:40px">ยังไม่มีบทเรียน</div>
+    </div>
+    <!-- โหมด: ตรวจเสียงในบทที่เลือก -->
+    <div id="rec-detail-mode" style="display:none">
+      <button class="mini" id="rec-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
+      <h2 class="display" id="rec-lesson-title"></h2>
+      <div class="section" style="margin-top:14px">
+        <div class="inline" style="align-items:flex-end">
+          <div class="field"><label for="rec-filter-student">เลือกนักเรียนที่จะตรวจ</label>
+            <select id="rec-filter-student"></select></div>
+          <button class="mini" id="rec-refresh" style="margin-bottom:2px">🔄 รีเฟรช</button>
+        </div>
+        <p class="hint" style="margin-top:10px">กด ▶️ ฟังทีละคำ · 🚩 ติดธงคำที่อ่านพลาด · หรือกด "เล่นต่อเนื่อง" เพื่อฟังรวดเดียวทุกคำ</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+          <button class="mini" id="rec-playall">⏯️ เล่นต่อเนื่องทุกคำ</button>
+          <button class="mini mini--danger" id="rec-stopall" style="display:none">⏹️ หยุด</button>
+          <label class="rec-line" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="rec-flag-only"> แสดงเฉพาะคำที่ติดธง 🚩</label>
+        </div>
+        <ul id="rec-list" class="list"></ul>
+      </div>
+      <div id="rec-grade-box" style="display:none"></div>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: คู่มือการใช้งาน -->
+<section id="view-guide" class="view">
+  <div class="container guide">
+    <h2 class="display" style="margin-bottom:10px">📖 คู่มือสำหรับครู</h2>
+
+    <div class="gsec">
+      <h3>1) เริ่มต้นใช้งาน</h3>
+      <ul>
+        <li>บัญชีครูเริ่มต้น: ชื่อผู้ใช้ <b>admin</b> รหัสผ่าน <b>admin123456</b> — เข้าครั้งแรกแล้วควรเปลี่ยนรหัสผ่านที่เมนู "การตั้งค่าทั่วไป"</li>
+        <li>เมนูทั้งหมดอยู่ที่ปุ่ม <b>☰</b> มุมซ้ายบน แตะเลือกหัวข้อแล้วเมนูจะย่อให้เอง</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
+      <h3>2) เพิ่มและจัดการนักเรียน</h3>
+      <p>เมนู <b>🧒 เพิ่ม / จัดการนักเรียน</b></p>
+      <ol>
+        <li>กรอก <b>ชื่อผู้ใช้</b> (ตัวอักษรอังกฤษสั้น ๆ ใช้อ้างอิงภายใน), <b>ชื่อที่แสดง</b> (ชื่อที่เด็กเห็นและเลือก) และ <b>PIN 4 หลัก</b> แล้วกดเพิ่ม</li>
+        <li>แต่ละคนมีปุ่ม <b>🔑 ตั้ง PIN ใหม่</b>, <b>♻️ ล้างผล</b> (ให้ทำแบบทดสอบใหม่ได้), <b>🗑️ ลบ</b></li>
+      </ol>
+      <div class="gtip">เด็กเข้าระบบโดยเลือกชื่อจากดร็อปดาวน์แล้วใส่ PIN · ดู PIN จากชีตไม่ได้ (เก็บแบบเข้ารหัส) ถ้าลืมให้กดตั้ง PIN ใหม่</div>
+    </div>
+
+    <div class="gsec">
+      <h3>3) สร้างบทเรียนและคำ</h3>
+      <p>เมนู <b>⚙️ จัดการบทเรียน</b></p>
+      <ol>
+        <li>เพิ่มบทเรียน: ตั้งชื่อ ลำดับ และรูปปก (อัปจากเครื่อง หรือวางลิงก์/ไอดีรูป Google Drive)</li>
+        <li>กด <b>📝 จัดการคำ</b> แล้ววางคำ <b>บรรทัดละ 1 คำ</b> จากนั้นกดเพิ่มทั้งหมด</li>
+        <li>แต่ละคำ: <b>🎙️ เพิ่มเสียง</b> ครูอัดเสียงตัวอย่างเองได้ (เด็กกดลำโพงจะได้ยินเสียงครู ถ้าไม่อัด ระบบจะใช้เสียงสังเคราะห์), <b>⬆️ ⬇️</b> จัดลำดับ, <b>✏️</b> แก้คำ, <b>🗑️</b> ลบ</li>
+      </ol>
+    </div>
+
+    <div class="gsec">
+      <h3>4) ตรวจและให้คะแนนการอ่าน</h3>
+      <p>เมนู <b>🎧 เสียงอ่านของนักเรียน</b></p>
+      <ol>
+        <li>เลือกบทเรียน → เลือกนักเรียนที่จะตรวจ</li>
+        <li>กด <b>▶️</b> ฟังเสียงที่เด็กอัดแต่ละคำ</li>
+        <li>เลือกระดับคะแนน: น้อย / พอใช้ / ดี / ดีมาก / ดีเยี่ยม</li>
+        <li>พิมพ์ <b>คำแนะนำสั้น ๆ</b> เช่น "ออกเสียง ร ล ให้ชัดขึ้น" แล้วกดบันทึก — เด็กและผู้ปกครองจะเห็นในหน้าบทเรียน (คะแนนจะกระพริบ)</li>
+      </ol>
+    </div>
+
+    <div class="gsec">
+      <h3>5) ดูภาพรวมและออกรายงาน</h3>
+      <ul>
+        <li><b>📊 แดชบอร์ด</b>: จำนวนนักเรียน บทเรียน เสียงอ่าน และตารางความก้าวหน้าของทุกคน</li>
+        <li><b>📄 รายงานนักเรียน</b>: เลือกเด็ก → ได้รายงานหน้าเดียว (คะแนน คำแนะนำ ตราที่ได้) กด <b>🖨️ พิมพ์ / บันทึก PDF</b> เพื่อส่งผู้ปกครอง</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
+      <h3>6) การตั้งค่าทั่วไป</h3>
+      <ul>
+        <li>เปลี่ยนรหัสผ่านบัญชีครู</li>
+        <li><b>🏅 ตั้งค่าตราสะสม</b>: ปรับชื่อ ไอคอน และเกณฑ์การได้ตรา (อ่านครบกี่บท / ส่งทดสอบกี่บท / ได้คะแนนระดับใดขึ้นไป) เพิ่มหรือลบตราได้ แล้วกดบันทึก มีผลกับนักเรียนทุกคน</li>
+        <li><b>♻️ เริ่มเทอมใหม่</b>: ล้างความก้าวหน้า ผลทดสอบ และเสียงอ่านของทุกคน เพื่อเริ่มต้นใหม่ (นักเรียนทำแบบทดสอบได้อีกครั้ง) — ย้อนกลับไม่ได้</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
+      <h3>7) เคล็ดลับและการแก้ปัญหา</h3>
+      <ul>
+        <li><b>เด็กอัดเสียงไม่ได้</b>: ให้เปิดเว็บด้วย Chrome/Safari (ไม่ใช่เปิดในแอปไลน์/เฟซบุ๊ก) และกด "อนุญาต/Allow" ไมโครโฟน</li>
+        <li><b>เข้าระบบไม่ได้</b>: ตรวจ PIN (ตั้งใหม่ได้) — ใส่ผิด 3 ครั้งจะถูกล็อก 30 นาที</li>
+        <li><b>ติดตั้งเป็นแอป</b>: กดปุ่ม "ติดตั้งแอป" ในหน้าเข้าระบบหรือในเมนู เพื่อเพิ่มลงหน้าจอโฮม เปิดเต็มจอเหมือนแอปจริง</li>
+        <li><b>สำรองข้อมูล</b>: คัดลอกไฟล์ Google Sheet เก็บไว้เป็นระยะ เพื่อความปลอดภัยของข้อมูล</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: รายงานรายบุคคล (พิมพ์/ส่งผู้ปกครอง) -->
+<section id="view-report" class="view">
+  <div class="container">
+    <div id="report-controls">
+      <h2 class="display" style="margin-bottom:8px">📄 รายงานรายบุคคล</h2>
+      <p class="muted">เลือกนักเรียนเพื่อสร้างรายงานผลการอ่าน แล้วกดพิมพ์หรือบันทึกเป็น PDF ส่งผู้ปกครองได้</p>
+      <div class="inline" style="align-items:flex-end">
+        <div class="field"><label for="report-student">เลือกนักเรียน</label>
+          <select id="report-student"><option value="">— เลือกนักเรียน —</option></select></div>
+        <button class="mini" id="report-print" disabled>🖨️ พิมพ์ / บันทึก PDF</button>
+      </div>
+    </div>
+    <div id="report-area"></div>
+  </div>
+</section>
+
+<!-- หน้าครู: จัดการบทเรียนและคำ -->
+<section id="view-admin" class="view">
+  <div class="container">
+    <div class="section">
+      <h2>เพิ่มบทเรียนใหม่</h2>
+      <div class="inline">
+        <div class="field"><label for="a-title">ชื่อบทเรียน</label>
+          <input id="a-title" type="text" placeholder="เช่น มาตราตัวสะกด แม่กก"></div>
+        <div class="field" style="flex:0 0 120px"><label for="a-order">ลำดับ</label>
+          <input id="a-order" type="number" value="1" min="0"></div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>รูปปกบทเรียน (แนวนอน 16:9)</label>
+        <p class="hint">อัปโหลดรูปจากเครื่อง (เก็บลง Google Drive ให้อัตโนมัติ) หรือวางลิงก์/ไอดีรูปจาก Drive</p>
+        <input id="a-cover-file" type="file" accept="image/*">
+        <input id="a-cover-link" type="text" placeholder="หรือวางลิงก์ Drive / ไอดีรูป" style="margin-top:8px">
+        <div class="preview" id="a-preview"><img id="a-preview-img" alt="ตัวอย่างรูปปก"></div>
+      </div>
+      <button class="btn" id="a-add-lesson" style="margin-top:14px">➕ เพิ่มบทเรียน</button>
+    </div>
+
+    <div class="section">
+      <h2>บทเรียนทั้งหมด</h2>
+      <ul id="admin-lessons" class="list"></ul>
+    </div>
+
+    <div class="section" id="word-panel" style="display:none">
+      <h2 id="word-panel-title">คำในบทเรียน</h2>
+      <p class="hint">เพิ่มคำได้โดยพิมพ์ทีละบรรทัด จากนั้นกด 🎙️ ที่คำแต่ละคำเพื่ออัดเสียง หรือเพิ่มไฟล์เสียงที่ครูอัดไว้แล้ว</p>
+      <ul id="admin-words" class="list"></ul>
+      <h3 class="display" style="margin-top:16px">วางหลายคำพร้อมกัน</h3>
+      <p class="hint">พิมพ์หรือวางคำ <strong>บรรทัดละ 1 คำ</strong> แล้วกดเพิ่ม</p>
+      <div class="field"><textarea id="bulk-words" placeholder="นก&#10;ปลา&#10;ดอกไม้&#10;..."></textarea></div>
+      <button class="btn" id="a-add-words" style="margin-top:10px">➕ เพิ่มคำทั้งหมด</button>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: การตั้งค่าทั่วไป -->
+<section id="view-settings" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:12px">🛠️ การตั้งค่าทั่วไป</h2>
+
+    <div class="section">
+      <h3 class="display" style="margin-bottom:8px">🏅 ตั้งค่าตราสะสม</h3>
+      <p class="hint">ปรับชื่อ ไอคอน และเงื่อนไขการได้ตราเองได้ เช่น มีหลายบทเรียนก็เพิ่มเกณฑ์ให้สูงขึ้น · เงื่อนไขมี 3 แบบ: อ่านครบกี่บท / ส่งทดสอบกี่บท / ได้คะแนนระดับใดขึ้นไป (กดบันทึกเมื่อแก้เสร็จ)</p>
+      <ul id="badge-config-list" class="list"></ul>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <button class="mini" id="badge-add">➕ เพิ่มตรา</button>
+        <button class="mini" id="badge-reset">↩️ คืนค่าเริ่มต้น</button>
+      </div>
+      <button class="btn" id="badge-save" style="margin-top:14px">💾 บันทึกตราสะสม</button>
+    </div>
+
+    <div class="section">
+      <h3 class="display" style="margin-bottom:8px">เปลี่ยนรหัสผ่านของฉัน</h3>
+      <p class="hint">เปลี่ยนรหัสผ่านบัญชีครูที่กำลังใช้งานอยู่ (อย่างน้อย 6 ตัวอักษร)</p>
+      <div class="inline">
+        <div class="field"><label for="cp-old">รหัสผ่านเดิม</label>
+          <input id="cp-old" type="password" placeholder="รหัสผ่านปัจจุบัน" autocomplete="current-password"></div>
+        <div class="field"><label for="cp-new">รหัสผ่านใหม่</label>
+          <input id="cp-new" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="new-password"></div>
+      </div>
+      <button class="btn" id="cp-save" style="margin-top:12px">💾 บันทึกรหัสผ่านใหม่</button>
+
+      <hr style="border:none;border-top:1px solid #eef0f7;margin:22px 0">
+
+      <h3 class="display" style="margin-bottom:8px">เริ่มเทอมใหม่</h3>
+      <p class="hint">ล้างความก้าวหน้า (ดาว/จำนวนคำที่อ่านแล้ว) <strong>ผลทดสอบการอ่าน</strong> และ <strong>เสียงอ่าน</strong> ของนักเรียน <strong>ทุกคน ทุกบท</strong> เพื่อเริ่มต้นใหม่ — ใช้เมื่อขึ้นเทอมใหม่ นักเรียนจะทำแบบทดสอบใหม่ได้ การลบนี้ย้อนกลับไม่ได้ (ไม่กระทบบทเรียนและคำ)</p>
+      <button class="btn btn--danger" id="reset-term">♻️ ล้างความก้าวหน้าของนักเรียนทุกคน</button>
+    </div>
+  </div>
+</section>
+
+<!-- กล่องอัดเสียง -->
+<div id="rec-overlay" class="overlay">
+  <div class="rec-box">
+    <h3 id="rec-title">อัดเสียง</h3>
+    <p class="hint">เลือกได้ 2 วิธี — กด "เริ่มอัด" เพื่ออัดสด หรือเลือกไฟล์เสียงที่อัดไว้แล้วจากเครื่อง จากนั้นฟังและกดบันทึก</p>
+    <div id="rec-status" class="muted">พร้อมอัด</div>
+    <audio id="rec-audio" controls style="display:none;width:100%;margin:10px 0"></audio>
+    <div class="field" style="margin:6px 0 0">
+      <label for="rec-file">หรือเลือกไฟล์เสียงจากเครื่อง (mp3, m4a, wav ...)</label>
+      <input id="rec-file" type="file" accept="audio/*">
+    </div>
+    <div class="rec-actions">
+      <button class="btn" id="rec-start">🎙️ เริ่มอัด</button>
+      <button class="btn btn--danger" id="rec-stop" style="display:none">⏹️ หยุด</button>
+      <button class="btn" id="rec-save" style="display:none">💾 บันทึกเสียงนี้</button>
+      <button class="btn btn--ghost" id="rec-close">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- คำแนะนำติดตั้งแอป (สำหรับ iOS / เบราว์เซอร์ที่ไม่มีปุ่มติดตั้งอัตโนมัติ) -->
+<div id="install-help" class="overlay">
+  <div class="rec-box">
+    <h3 id="install-help-title">📲 ติดตั้งแอปลงเครื่อง</h3>
+    <div id="install-help-body" class="hint" style="text-align:left;font-size:1rem;line-height:1.7"></div>
+    <div class="rec-actions"><button class="btn btn--ghost" id="install-help-close">เข้าใจแล้ว</button></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div id="loading"><div class="box"><div class="chick">🐥</div><p id="loading-text">กำลังโหลด...</p></div></div>
+<div id="confetti"></div>
+
+<script>
+/* ⭐ URL ของ API (Google Apps Script) — แก้ตรงนี้ถ้า URL เปลี่ยน */
+const API_URL = "https://script.google.com/macros/s/AKfycbw9RGAuhy_4HSfP35_LJ6LKDQAze_QKe_edspr_Yp4gNlwQB5rvmQH3z-hnMKYqt9i8QA/exec";
+
+let state = { user: null, token: null };
+let adminLessonId = null, pendingCoverUrl = "";
+let dashState = null;
+
+/* เรียก API ผ่าน POST แบบ text/plain เพื่อเลี่ยงปัญหา CORS */
+async function api(action, params = {}) {
+  const res = await fetch(API_URL, { method: "POST",
+    body: JSON.stringify(Object.assign({ action, token: state.token }, params)) });
+  const data = await res.json();
+  if (!data.ok) {
+    if (data.error && (data.error.indexOf("เข้าสู่ระบบ") >= 0 || data.error.indexOf("ไม่พบบัญชี") >= 0)) {
+      localStorage.removeItem("session"); state = { user: null, token: null };
+      $("appbar").style.display = "none"; show("view-login");
+      if (typeof resetLoginUI === "function") resetLoginUI();
+    }
+    throw new Error(data.error || "เกิดข้อผิดพลาด");
+  }
+  return data.data;
+}
+
+/* ตัวช่วยหน้าจอ */
+const $ = (id) => document.getElementById(id);
+function isTeacher(){ return state.user && state.user.role === "teacher"; }
+function show(view){ document.querySelectorAll(".view").forEach(v=>v.style.display="none");
+  $(view).style.display = view==="view-login" ? "flex" : "block"; }
+function toast(msg, type="info"){ const box=$("toasts"); const el=document.createElement("div");
+  el.className="toast "+(type==="info"?"":type);
+  el.textContent=(type==="success"?"✅ ":type==="error"?"😢 ":"💬 ")+msg; box.appendChild(el);
+  setTimeout(()=>{el.classList.add("out");setTimeout(()=>el.remove(),400);},3500); }
+function loading(on, text="กำลังโหลด..."){ $("loading-text").textContent=text; $("loading").style.display=on?"flex":"none"; }
+function celebrate(){ const e=["🎉","⭐","🎈","🌟","🥳","✨","🏆"], layer=$("confetti");
+  for(let i=0;i<24;i++){const s=document.createElement("span");s.className="confetti";
+    s.textContent=e[Math.floor(Math.random()*e.length)];s.style.left=Math.random()*100+"vw";
+    s.style.animationDelay=Math.random()*0.6+"s";s.style.fontSize=(20+Math.random()*24)+"px";
+    layer.appendChild(s);setTimeout(()=>s.remove(),3000);} }
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* ===== PWA: ติดตั้งลงหน้าจอเครื่อง (มือถือ) ===== */
+const APP_ICON = "https://i.ibb.co/m72jfbM/image.png";
+function isStandalone(){ return window.matchMedia && window.matchMedia("(display-mode: standalone)").matches
+  || window.navigator.standalone === true; }
+function isiOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream; }
+function inAppBrowser(){ return /(FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|MicroMessenger|TikTok|GSA)/i.test(navigator.userAgent||""); }
+
+/* สร้าง manifest แบบฝังในหน้า (ไม่ต้องอัปไฟล์แยก) เพื่อให้ติดตั้งได้ */
+(function setupManifest(){
+  try{
+    const dir = location.origin + location.pathname.replace(/[^/]*$/, "");
+    const manifest = {
+      name: "อ่านสนุก ป.5", short_name: "อ่านสนุก",
+      description: "ฝึกอ่านคำภาษาไทย สำหรับชั้น ป.5",
+      start_url: location.href.split("#")[0], scope: dir,
+      display: "standalone", orientation: "portrait",
+      background_color: "#eef6ff", theme_color: "#16a3a3", lang: "th",
+      icons: [
+        { src: APP_ICON, sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: APP_ICON, sizes: "512x512", type: "image/png", purpose: "any" }
+      ]
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:"application/manifest+json"}));
+    const link = document.getElementById("manifest-link");
+    if(link) link.setAttribute("href", url);
+  }catch(_){}
+})();
+
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); deferredPrompt=e; });
+window.addEventListener("appinstalled",()=>{ deferredPrompt=null;
+  const b=$("install-btn"); if(b) b.style.display="none"; toast("ติดตั้งแอปแล้ว 🎉","success"); });
+
+/* ลงทะเบียน Service Worker เพื่อให้เปิดแอปแบบออฟไลน์ได้ (ต้องมีไฟล์ sw.js อยู่โฟลเดอร์เดียวกัน) */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
+/* แสดงปุ่มติดตั้งบนหน้าเข้าสู่ระบบ ถ้ายังไม่ได้เปิดแบบติดตั้ง */
+function maybeShowInstall(){ const b=$("install-btn"); if(!b) return;
+  b.style.display = isStandalone() ? "none" : "inline-block"; }
+
+async function installApp(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch(_){}
+    deferredPrompt=null; const b=$("install-btn"); if(b) b.style.display="none";
     return;
   }
+  showInstallHelp(isiOS() ? "ios" : "generic");
+}
+function showInstallHelp(kind){
+  const body=$("install-help-body");
+  if(kind==="ios"){
+    body.innerHTML = "เปิดหน้านี้ด้วย <strong>Safari</strong> แล้วทำตามนี้:<br>"+
+      "1) แตะปุ่ม <strong>แชร์</strong> (ไอคอนสี่เหลี่ยมมีลูกศรชี้ขึ้น ⬆️)<br>"+
+      "2) เลื่อนหา <strong>“เพิ่มไปยังหน้าจอโฮม”</strong> (Add to Home Screen)<br>"+
+      "3) แตะ <strong>“เพิ่ม”</strong> มุมขวาบน เป็นอันเสร็จ 🎉";
+  }else{
+    body.innerHTML = "เปิดเมนูของเบราว์เซอร์ (ปุ่ม <strong>⋮</strong> หรือ <strong>⋯</strong> มุมจอ) "+
+      "แล้วเลือก <strong>“ติดตั้งแอป”</strong> หรือ <strong>“เพิ่มลงในหน้าจอหลัก”</strong> (Add to Home screen)<br><br>"+
+      (inAppBrowser() ? "ตอนนี้กำลังเปิดในแอปอื่นอยู่ แนะนำให้เปิดด้วย <strong>Chrome</strong> หรือ <strong>Safari</strong> ก่อนนะ" : "");
+  }
+  $("install-help").style.display="flex";
+}
+$("install-btn") && $("install-btn").addEventListener("click", installApp);
+$("install-help-close") && $("install-help-close").addEventListener("click", ()=>{ $("install-help").style.display="none"; });
 
-  // ทรัพยากรอื่น (ฟอนต์/รูป): ใช้แคชก่อน ถ้าไม่มีค่อยโหลดแล้วเก็บแคชไว้
-  e.respondWith(
-    caches.match(req).then((m) =>
-      m || fetch(req).then((r) => {
-        const cp = r.clone();
-        caches.open(CACHE).then((c) => c.put(req, cp)).catch(() => {});
-        return r;
-      }).catch(() => m)
-    )
-  );
+/* ===== เมนูขีด 3 ขีด (แฮมเบอร์เกอร์) ===== */
+/* เมนูของครู (7 ข้อ) และเมนูของนักเรียน (เรียบง่าย) */
+const TEACHER_MENU = [
+  { go:"dashboard",  label:"📊 แดชบอร์ด" },
+  { go:"lessons",    label:"📚 บทเรียน" },
+  { go:"students",   label:"🧒 เพิ่ม / จัดการนักเรียน" },
+  { go:"admin",      label:"⚙️ จัดการบทเรียน" },
+  { go:"recordings", label:"🎧 เสียงอ่านของนักเรียน" },
+  { go:"report",     label:"📄 รายงานนักเรียน" },
+  { go:"settings",   label:"🛠️ การตั้งค่าทั่วไป" },
+  { go:"guide",      label:"📖 คู่มือครู" },
+  { go:"logout",     label:"🚪 ออกจากระบบ" }
+];
+const STUDENT_MENU = [
+  { go:"lessons", label:"📚 บทเรียน" },
+  { go:"test",    label:"🎤 ทดสอบการอ่าน" },
+  { go:"badges",  label:"🏅 ตราสะสม" },
+  { go:"help",    label:"❓ วิธีใช้งาน" },
+  { go:"logout",  label:"🚪 ออกจากระบบ" }
+];
+let menuOpen = false;
+
+function buildMenu(){
+  const panel = $("menu-panel"); panel.innerHTML = "";
+  let items = (isTeacher() ? TEACHER_MENU : STUDENT_MENU).slice();
+  // ถ้ายังไม่ได้ติดตั้งเป็นแอป เพิ่มเมนู "ติดตั้งแอป" ไว้เหนือปุ่มออกจากระบบ
+  if(!isStandalone()){
+    items = items.filter(x=>x.go!=="logout")
+      .concat([{go:"install",label:"📲 ติดตั้งแอปลงเครื่อง"},{go:"logout",label:"🚪 ออกจากระบบ"}]);
+  }
+  items.forEach(it=>{
+    const b = document.createElement("button");
+    b.className = "menu-item"; b.dataset.go = it.go; b.setAttribute("role","menuitem");
+    b.textContent = it.label;
+    b.addEventListener("click", ()=>{ closeMenu(); navTo(it.go); });
+    panel.appendChild(b);
+  });
+}
+function openMenu(){ menuOpen=true; $("menu-panel").classList.add("open");
+  $("menu-btn").setAttribute("aria-expanded","true"); }
+function closeMenu(){ menuOpen=false; $("menu-panel").classList.remove("open");
+  $("menu-btn").setAttribute("aria-expanded","false"); }
+function toggleMenu(){ menuOpen ? closeMenu() : openMenu(); }
+function setActiveMenu(go){
+  document.querySelectorAll(".menu-item").forEach(b=>b.classList.toggle("active", b.dataset.go===go));
+}
+/* เมื่อเลือกเมนู: ไปหน้านั้น แล้วเมนูจะย่อหายไปอัตโนมัติ (closeMenu ถูกเรียกก่อนหน้านี้) */
+function navTo(go){
+  switch(go){
+    case "dashboard":  goDashboard();  break;
+    case "lessons":    goLessons();    break;
+    case "test":       goTest();       break;
+    case "badges":     goBadges();     break;
+    case "students":   goStudents();   break;
+    case "admin":      goAdmin();      break;
+    case "recordings": goRecordings(); break;
+    case "report":     goReport();     break;
+    case "help":       goHelp();       break;
+    case "guide":      goGuide();      break;
+    case "settings":   goSettings();   break;
+    case "install":    installApp();   return;
+    case "logout":     doLogout();     return;
+  }
+  setActiveMenu(go);
+}
+$("menu-btn").addEventListener("click",(e)=>{ e.stopPropagation(); toggleMenu(); });
+/* คลิกที่อื่นนอกเมนู -> ปิดเมนู */
+document.addEventListener("click",(e)=>{ if(menuOpen && !$("menu-wrap").contains(e.target)) closeMenu(); });
+/* กด Esc -> ปิดเมนู */
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && menuOpen) closeMenu(); });
+
+/* อ่านออกเสียง: เล่นไฟล์เสียงครูก่อน ถ้าไม่ได้ใช้เสียงสังเคราะห์ */
+let voices=[], warnedNoThai=false;
+function loadVoices(){ if("speechSynthesis" in window) voices=speechSynthesis.getVoices(); }
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+const audioCache={};
+async function resolveAudioSrc(audioUrl){
+  if(audioCache[audioUrl]) return audioCache[audioUrl];
+  let fileId=null;
+  if(!/^https?:/i.test(audioUrl)) fileId=audioUrl;
+  else { const m=audioUrl.match(/[-\w]{25,}/);
+         if(audioUrl.indexOf("drive.google.com")>=0 && m) fileId=m[0]; }
+  if(!fileId) return audioUrl;
+  const res=await api("getAudio",{id:fileId});
+  const src="data:"+(res.mimeType||"audio/webm")+";base64,"+res.base64;
+  audioCache[audioUrl]=src; return src;
+}
+function speak(text,audioUrl){
+  if(audioUrl){
+    resolveAudioSrc(audioUrl).then(src=>{ const a=new Audio(src);
+      a.onerror=()=>ttsThai(text); a.play().catch(()=>ttsThai(text)); })
+      .catch(()=>ttsThai(text));
+    return;
+  }
+  ttsThai(text);
+}
+function ttsThai(text){ if(!("speechSynthesis" in window)){toast("เครื่องนี้ยังอ่านออกเสียงไม่ได้ แต่ดูคำได้นะ");return;}
+  speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="th-TH"; u.rate=0.9;
+  const thai=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith("th"));
+  if(thai)u.voice=thai; else if(!warnedNoThai){warnedNoThai=true;toast("เครื่องนี้ยังไม่มีเสียงภาษาไทย ครูอัดเสียงเองได้นะ");}
+  speechSynthesis.speak(u); }
+
+/* ===== เข้าสู่ระบบ ===== */
+/* ครู: ชื่อผู้ใช้ + รหัสผ่าน */
+$("auth-form").addEventListener("submit",async(e)=>{ e.preventDefault();
+  const username=$("username").value.trim(), password=$("password").value;
+  if(!username||!password) return toast("กรอกชื่อผู้ใช้และรหัสผ่านด้วยนะ","error");
+  loading(true,"กำลังเข้าสู่ระบบ...");
+  try{ const res=await api("login",{username,password});
+    setSession(res.user,res.token); loading(false); routeHome(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+/* ===== นักเรียน: เลือกชื่อ + ใส่ PIN 4 หลัก ===== */
+const AVATARS=["🐤","🐱","🐶","🐰","🦊","🐼","🐨","🐯","🦁","🐸","🐧","🦉","🐝","🦄","🐢","🐙","🐳","🦋","🌟","🍀","🐥","🐹","🐻","🐲"];
+function avatarFor(key){ let h=0; const s=String(key); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return AVATARS[h%AVATARS.length]; }
+
+let pickedStudent=null, pinValue="", rosterList=[];
+
+function resetLoginUI(){
+  $("login-teacher").style.display="none"; $("login-pin").style.display="none"; $("login-pick").style.display="block";
+  pickedStudent=null; pinValue=""; updatePinDots();
+  if(!$("keypad").childElementCount) buildKeypad();
+  loadRoster();
+}
+async function loadRoster(){
+  const sel=$("roster-select"); $("roster-empty").style.display="none";
+  sel.innerHTML=`<option value="">— กำลังโหลด... —</option>`;
+  try{
+    const list=await api("getStudentRoster"); rosterList=list;
+    if(!list.length){ sel.innerHTML=`<option value="">— ยังไม่มีรายชื่อ —</option>`; $("roster-empty").style.display="block"; return; }
+    let opts=`<option value="">— เลือกชื่อ —</option>`;
+    list.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+    sel.innerHTML=opts;
+  }catch(err){
+    sel.innerHTML=`<option value="">— โหลดไม่ได้ —</option>`;
+    $("roster-empty").style.display="block";
+    $("roster-empty").textContent="โหลดรายชื่อไม่ได้ — ลองรีเฟรช หรือเข้าสู่ระบบสำหรับครู";
+  }
+}
+$("roster-select").addEventListener("change",()=>{
+  const u=$("roster-select").value;
+  if(!u) return;
+  const s=rosterList.find(x=>String(x.username)===u);
+  if(s) pickStudent(s);
 });
+function pickStudent(s){ pickedStudent=s; pinValue="";
+  $("login-pick").style.display="none"; $("login-teacher").style.display="none";
+  $("login-pin").style.display="block";
+  $("pin-greet").textContent="สวัสดี "+(s.displayName||s.username)+" 👋";
+  updatePinDots(); }
+
+function buildKeypad(){
+  const pad=$("keypad"); pad.innerHTML="";
+  ["1","2","3","4","5","6","7","8","9","⌫","0","✓"].forEach(k=>{
+    const b=document.createElement("button"); b.type="button";
+    b.className="key"+(k==="⌫"||k==="✓"?" key--fn":""); b.textContent=k;
+    b.addEventListener("click",()=>pressKey(k)); pad.appendChild(b);
+  });
+}
+function pressKey(k){
+  if(k==="⌫"){ pinValue=pinValue.slice(0,-1); updatePinDots(); return; }
+  if(k==="✓"){ submitPin(); return; }
+  if(pinValue.length>=4) return;
+  pinValue+=k; updatePinDots();
+  if(pinValue.length===4) setTimeout(submitPin,160);   // ครบ 4 หลัก -> เข้าระบบอัตโนมัติ
+}
+function updatePinDots(){
+  const dots=$("pin-dots"); dots.classList.remove("bad");
+  for(let i=0;i<dots.children.length;i++) dots.children[i].classList.toggle("on", i<pinValue.length);
+}
+async function submitPin(){
+  if(pinValue.length<4 || !pickedStudent) return;
+  const pin=pinValue;
+  loading(true,"กำลังเข้าสู่ระบบ...");
+  try{ const res=await api("login",{username:pickedStudent.username,password:pin});
+    setSession(res.user,res.token); loading(false); routeHome(); }
+  catch(err){ loading(false); pinValue=""; updatePinDots();
+    const d=$("pin-dots"); d.classList.add("bad"); d.style.animation="none"; void d.offsetWidth; d.style.animation="shake .4s";
+    toast("รหัส PIN ไม่ถูกต้อง ลองใหม่นะ","error"); }
+}
+$("to-teacher").addEventListener("click",()=>{ $("login-pick").style.display="none"; $("login-pin").style.display="none"; $("login-teacher").style.display="block"; });
+$("to-student").addEventListener("click",resetLoginUI);
+$("pin-back").addEventListener("click",()=>{ pinValue=""; updatePinDots(); $("roster-select").value="";
+  $("login-pin").style.display="none"; $("login-pick").style.display="block"; });
+
+function setSession(user,token){ state.user=user; state.token=token;
+  localStorage.setItem("session",JSON.stringify(state));
+  $("appbar").style.display="flex";
+  buildMenu(); closeMenu();
+  $("greeting").textContent="สวัสดี "+(user.displayName||user.username||"เพื่อน")+" 👋";
+  $("lessons-subtitle").textContent=isTeacher()
+    ? "โหมดดูตัวอย่างสำหรับครู (แตะบทเรียนเพื่อดูเหมือนที่นักเรียนเห็น)"
+    : "เลือกบทเรียนที่อยากฝึกอ่านได้เลย"; }
+
+function routeHome(){ if(isTeacher()){ goDashboard(); setActiveMenu("dashboard"); }
+  else { goLessons(); setActiveMenu("lessons"); } }
+
+function doLogout(){ localStorage.removeItem("session");
+  state={user:null,token:null}; closeMenu(); $("appbar").style.display="none";
+  show("view-login"); resetLoginUI(); maybeShowInstall(); }
+
+/* ===== หน้าบทเรียน (นักเรียน / ครูดูตัวอย่าง) ===== */
+$("back-lessons").addEventListener("click",goLessons);
+
+async function goLessons(){ show("view-lessons"); loading(true,"กำลังเปิดห้องเรียน...");
+  try{ const lessons=await api("getLessons");
+    let myProg=[]; if(state.user.role==="student"){ try{ myProg=await api("getMyProgress"); }catch(_){} }
+    loading(false);
+    const pmap={}; myProg.forEach(p=>pmap[p.lessonId]=p);
+    const grid=$("lesson-grid"); grid.innerHTML="";
+    $("lessons-empty").style.display=lessons.length?"none":"block";
+    lessons.forEach(l=>{ const card=document.createElement("button"); card.className="lesson-card";
+      const cover=l.coverUrl
+        ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>📖</div>'">`
+        : `<div class="cover cover--empty">📖</div>`;
+      let progHtml="แตะเพื่อเริ่มอ่าน";
+      const p=pmap[l.id];
+      if(p && p.totalCount){ const pct=Math.round(p.readCount/p.totalCount*100);
+        progHtml=`อ่านแล้ว ${p.readCount}/${p.totalCount} คำ<div class="minibar"><span style="width:${pct}%"></span></div>`; }
+      card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${progHtml}</div></div>`;
+      card.addEventListener("click",()=>openLesson(l)); grid.appendChild(card); });
+  }catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== หน้าคำในบทเรียน ===== */
+let currentWords=[], readSet=new Set(), currentLessonId=null;
+
+async function preloadAudio(words){
+  const list=words.filter(w=>w.audioUrl);
+  if(!list.length) return;
+  let done=0;
+  loading(true,`กรุณารอสักครู่ กำลังโหลดบทเรียน... (0/${list.length})`);
+  await Promise.all(list.map(w=>
+    resolveAudioSrc(w.audioUrl).catch(()=>null).then(()=>{
+      done++; loading(true,`กรุณารอสักครู่ กำลังโหลดบทเรียน... (${done}/${list.length})`);
+    })
+  ));
+}
+
+async function openLesson(lesson){ currentLessonId=lesson.id;
+  loading(true,"กรุณารอสักครู่ กำลังโหลดบทเรียน...");
+  try{
+    currentWords=await api("getWords",{lessonId:lesson.id});
+    const valid=new Set(currentWords.map(w=>w.id));
+    if(state.user.role==="student"){
+      let serverIds=null;
+      try{ const sp=await api("getLessonProgress",{lessonId:lesson.id}); serverIds=sp.readIds||[]; }
+      catch(_){ serverIds=null; }
+      if(serverIds!==null){
+        readSet=new Set(serverIds.filter(id=>valid.has(id)));
+      }else{
+        const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
+        readSet=new Set(saved.filter(id=>valid.has(id)));
+      }
+    }else{
+      const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
+      readSet=new Set(saved.filter(id=>valid.has(id)));
+    }
+    localStorage.setItem("progress:"+lesson.id,JSON.stringify([...readSet]));
+    await preloadAudio(currentWords);
+    $("lesson-title").textContent=lesson.title;
+    renderWords(); updateProgress();
+    await showLessonGrade(lesson.id);   // โชว์ผลคะแนนกระพริบ ถ้าครูประเมินแล้ว
+    show("view-lesson");
+    loading(false);
+  }catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ดึงผลทดสอบของบทนี้มาแสดงเป็นป้ายกระพริบ (เฉพาะนักเรียน และเมื่อครูประเมินแล้ว) */
+async function showLessonGrade(lessonId){
+  const banner=$("lesson-grade"); banner.className="grade-banner"; banner.style.display="none";
+  const note=$("lesson-comment"); note.className="teacher-note"; note.innerHTML="";
+  if(state.user.role!=="student") return;
+  try{ const t=await api("getMyLessonTest",{lessonId});
+    if(t && t.status==="graded" && t.grade){
+      banner.className="grade-banner show "+gradeClass(t.grade);
+      banner.textContent="🌟 คุณครูประเมินการอ่านของหนู: "+t.grade+" 🌟";
+    }
+    if(t && t.comment){
+      note.className="teacher-note show";
+      note.innerHTML="💬 <b>คำแนะนำจากคุณครู:</b> "+esc(t.comment);
+    }
+  }catch(_){}
+}
+function gradeClass(g){ return {"น้อย":"g-low","พอใช้":"g-fair","ดี":"g-good","ดีมาก":"g-vgood","ดีเยี่ยม":"g-excel"}[g]||"g-good"; }
+
+function renderWords(){ const grid=$("word-grid"); grid.innerHTML="";
+  if(!currentWords.length){ grid.innerHTML=`<p class="muted">บทเรียนนี้ยังไม่มีคำ 🐥</p>`; return; }
+  currentWords.forEach(w=>{ const card=document.createElement("div");
+    card.className="word-card"+(readSet.has(w.id)?" read":"");
+    card.innerHTML=`<span class="star">⭐</span><div class="word-text">${esc(w.text)}</div>
+      <div class="word-actions">
+        <button class="speaker" aria-label="ฟังเสียงคำว่า ${esc(w.text)}">🔊</button>
+      </div>`;
+    card.querySelector(".speaker").addEventListener("click",()=>{
+      card.classList.add("pop"); setTimeout(()=>card.classList.remove("pop"),300);
+      speak(w.text,w.audioUrl);
+      if(!readSet.has(w.id)){ readSet.add(w.id); card.classList.add("read");
+        localStorage.setItem("progress:"+currentLessonId,JSON.stringify([...readSet]));
+        updateProgress(); saveProgressToServer(); } });
+    grid.appendChild(card); }); }
+
+function updateProgress(){ const total=currentWords.length, done=readSet.size;
+  $("progress-fill").style.width=(total?Math.round(done/total*100):0)+"%";
+  $("progress-text").textContent=`อ่านแล้ว ${done} / ${total} คำ`;
+  const cheers=["เก่งมาก!","สู้ ๆ นะ!","อ่านได้แล้ว เยี่ยม!","ลองอีกคำสิ!","หนูทำได้!"];
+  if(done===0)$("bubble").textContent="กดปุ่มลำโพงเพื่อฟังเสียงนะ!";
+  else if(done<total)$("bubble").textContent=cheers[Math.floor(Math.random()*cheers.length)];
+  else{ $("bubble").textContent="เก่งมาก! อ่านครบทุกคำแล้ว 🏆";
+    if(!sessionStorage.getItem("cel:"+currentLessonId)){ sessionStorage.setItem("cel:"+currentLessonId,"1");
+      celebrate(); toast("ยอดเยี่ยม! อ่านครบทุกคำแล้ว ⭐","success"); } } }
+
+function saveProgressToServer(){ if(state.user.role!=="student") return;
+  api("saveProgress",{lessonId:currentLessonId,readCount:readSet.size,
+    totalCount:currentWords.length,readIds:[...readSet]})
+    .catch(()=>{}); }
+
+/* ===== ทดสอบการอ่าน (นักเรียน): เลือกบท -> อัดเสียงทุกคำ -> ส่ง ===== */
+let testState={lessons:[],myTests:[]}, testCurrentLesson=null, testWords=[], testBlobs={};
+
+async function goTest(){ show("view-test");
+  $("test-lessons-mode").style.display="block"; $("test-detail-mode").style.display="none";
+  loading(true,"กำลังโหลดแบบทดสอบ...");
+  try{ const [lessons,myTests]=await Promise.all([api("getLessons"),api("getMyTests")]);
+    testState={lessons,myTests}; loading(false); renderTestLessons(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+function renderTestLessons(){
+  const tmap={}; (testState.myTests||[]).forEach(t=>tmap[t.lessonId]=t);
+  const grid=$("test-lesson-grid"); grid.innerHTML="";
+  $("test-lessons-empty").style.display=testState.lessons.length?"none":"block";
+  testState.lessons.forEach(l=>{ const t=tmap[l.id];
+    const card=document.createElement("button"); card.className="lesson-card";
+    const cover=l.coverUrl
+      ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>🎤</div>'">`
+      : `<div class="cover cover--empty">🎤</div>`;
+    let meta="แตะเพื่อเริ่มทดสอบ";
+    if(t && t.status==="graded" && t.grade) meta=`<span class="meta-grade">🌟 ผลการประเมิน: ${esc(t.grade)}</span>`;
+    else if(t && t.status) meta="📨 ส่งแล้ว · รอคุณครูประเมิน";
+    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
+    card.addEventListener("click",()=>openTestLesson(l)); grid.appendChild(card); }); }
+
+async function openTestLesson(lesson){ testCurrentLesson=lesson;
+  $("test-lessons-mode").style.display="none"; $("test-detail-mode").style.display="block";
+  $("test-title").textContent="🎤 "+lesson.title;
+  loading(true,"กำลังเปิดแบบทดสอบ...");
+  try{
+    const [words,t]=await Promise.all([
+      api("getWords",{lessonId:lesson.id}), api("getMyLessonTest",{lessonId:lesson.id})]);
+    testWords=words; testBlobs={}; loading(false);
+    const banner=$("test-grade-banner"); banner.className="grade-banner"; banner.style.display="none";
+    const note=$("test-comment"); note.className="teacher-note"; note.innerHTML="";
+    const warn=$("test-mic-warning"); warn.style.display="none";
+    if(t && (t.status==="submitted" || t.status==="graded")){
+      // ทำไปแล้ว -> ล็อก ทำได้ครั้งเดียว
+      $("test-word-grid").style.display="none";
+      $("test-submit-wrap").style.display="none";
+      $("test-progress").style.display="none";
+      $("test-bubble").textContent="ทำแบบทดสอบบทนี้เรียบร้อยแล้ว 🎉";
+      $("test-locked").style.display="block";
+      if(t.status==="graded" && t.grade){
+        banner.className="grade-banner show "+gradeClass(t.grade); banner.style.display="block";
+        banner.textContent="🌟 คุณครูประเมินการอ่านของหนู: "+t.grade+" 🌟";
+        $("test-locked").innerHTML=`<p style="font-size:1.15rem">คุณครูประเมินแล้ว ✅<br>ดูผลได้ในหน้า "บทเรียน" ด้วยนะ</p>`;
+      }else{
+        $("test-locked").innerHTML=`<p style="font-size:1.15rem">✅ ส่งแบบทดสอบแล้ว กำลังรอคุณครูประเมิน 🐥</p>`;
+      }
+      if(t.comment){ note.className="teacher-note show"; note.innerHTML="💬 <b>คำแนะนำจากคุณครู:</b> "+esc(t.comment); }
+    }else{
+      // ยังไม่เคยทำ -> แสดงคำให้อัดเสียง (มีแต่ไมโครโฟน ไม่มีลำโพง)
+      $("test-word-grid").style.display="";
+      $("test-progress").style.display="block";
+      $("test-locked").style.display="none";
+      showMicWarning();          // เตือนเรื่องไมโครโฟนบนมือถือ ถ้าจำเป็น
+      renderTestWords();
+    }
+    $("test-detail-mode").scrollIntoView({behavior:"smooth"});
+  }catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ตรวจว่าเครื่อง/เบราว์เซอร์อัดเสียงได้ไหม */
+function recordingSupport(){
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || !window.MediaRecorder)
+    return { ok:false, reason:"unsupported" };
+  if(inAppBrowser()) return { ok:true, reason:"inapp" };
+  return { ok:true, reason:"" };
+}
+/* แสดงแถบเตือนเรื่องไมค์ในหน้าทดสอบ */
+function showMicWarning(){
+  const warn=$("test-mic-warning"); const sup=recordingSupport();
+  if(!sup.ok){
+    warn.className="warn-banner err"; warn.style.display="block";
+    warn.innerHTML="⚠️ เครื่องหรือเบราว์เซอร์นี้ยังอัดเสียงไม่ได้ "+
+      "ลองเปิดเว็บนี้ด้วยแอป <strong>Chrome</strong> หรือ <strong>Safari</strong> แล้วลองใหม่นะ "+
+      "(หรือให้คุณครูช่วยเลือกไฟล์เสียงจากเครื่องแทนได้)";
+  }else if(sup.reason==="inapp"){
+    warn.className="warn-banner"; warn.style.display="block";
+    warn.innerHTML="💡 ถ้าแตะไมค์แล้วอัดเสียงไม่ได้ ให้เปิดหน้านี้ใน <strong>Chrome/Safari</strong> "+
+      "โดยกดปุ่ม <strong>⋯</strong> มุมจอ แล้วเลือก “เปิดในเบราว์เซอร์”";
+  }else{
+    warn.style.display="none";
+  }
+}
+
+function renderTestWords(){ const grid=$("test-word-grid"); grid.innerHTML="";
+  if(!testWords.length){ grid.innerHTML=`<p class="muted">บทเรียนนี้ยังไม่มีคำ 🐥</p>`; return; }
+  testWords.forEach(w=>{ const card=document.createElement("div");
+    card.className="word-card"+(testBlobs[w.id]?" done":""); card.dataset.wid=w.id;
+    card.innerHTML=`<span class="star">✅</span><div class="word-text">${esc(w.text)}</div>
+      <div class="word-actions">
+        <button class="mic" aria-label="อัดเสียงอ่านคำว่า ${esc(w.text)}">🎤</button>
+      </div>`;
+    card.querySelector(".mic").addEventListener("click",()=>openTestRecorder(w));
+    grid.appendChild(card); });
+  updateTestProgress(); }
+
+function markTestWordDone(wordId){
+  const card=$("test-word-grid").querySelector(`[data-wid="${wordId}"]`);
+  if(card) card.classList.add("done");
+  updateTestProgress(); }
+
+function updateTestProgress(){ const total=testWords.length;
+  const done=testWords.filter(w=>testBlobs[w.id]).length;
+  $("test-progress").textContent=`อัดแล้ว ${done} / ${total} คำ`;
+  if(done===0)$("test-bubble").textContent="กดไมโครโฟนเพื่ออัดเสียงอ่านของหนูนะ!";
+  else if(done<total)$("test-bubble").textContent="อ่านได้ดีมาก อัดให้ครบทุกคำนะ!";
+  else $("test-bubble").textContent="อัดครบแล้ว กดส่งให้คุณครูได้เลย 🎉";
+  $("test-submit-wrap").style.display=(total>0 && done===total)?"block":"none"; }
+
+$("test-back").addEventListener("click",()=>{
+  $("test-detail-mode").style.display="none"; $("test-lessons-mode").style.display="block"; goTest(); });
+
+$("test-submit").addEventListener("click",async()=>{
+  const total=testWords.length, done=testWords.filter(w=>testBlobs[w.id]).length;
+  if(total===0 || done<total) return toast("ยังอัดเสียงไม่ครบทุกคำนะ","error");
+  if(!confirm("ส่งแบบทดสอบการอ่านบทนี้ให้คุณครู?\nส่งแล้วจะแก้ไขไม่ได้ และทำได้เพียงครั้งเดียว")) return;
+  loading(true,`กำลังส่งเสียงอ่าน... (0/${total})`);
+  try{
+    let i=0;
+    for(const w of testWords){
+      const t=testBlobs[w.id];
+      const b64=await blobToBase64(t.blob);
+      await api("submitRecording",{lessonId:testCurrentLesson.id,wordId:w.id,
+        wordText:w.text,dataBase64:b64,mimeType:t.mime,name:"test_"+w.id});
+      i++; loading(true,`กำลังส่งเสียงอ่าน... (${i}/${total})`);
+    }
+    await api("submitTest",{lessonId:testCurrentLesson.id});
+    loading(false); testBlobs={};
+    celebrate(); toast("ส่งแบบทดสอบให้คุณครูแล้ว 🎤","success");
+    openTestLesson(testCurrentLesson);   // โหลดใหม่ -> เข้าสู่สถานะล็อก
+  }catch(err){ loading(false); toast("ส่งไม่สำเร็จ: "+err.message,"error"); } });
+
+/* ===== ตราสะสม (นักเรียน) — คำนวณจากความก้าวหน้า + ผลทดสอบ ===== */
+async function goBadges(){ if(state.user.role!=="student") return goLessons();
+  show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
+  try{ const [progress,tests,config]=await Promise.all([
+      api("getMyProgress"),api("getMyTests"),api("getBadgeConfig")]);
+    loading(false); renderBadges(computeBadges(progress,tests,config)); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+const GRADE_RANK={"น้อย":1,"พอใช้":2,"ดี":3,"ดีมาก":4,"ดีเยี่ยม":5};
+function computeBadges(progress,tests,config){
+  const read=(progress||[]).filter(p=>Number(p.totalCount)>0 && Number(p.readCount)>=Number(p.totalCount)).length;
+  const sent=(tests||[]).filter(t=>t.status==="submitted"||t.status==="graded").length;
+  let maxGrade=0; (tests||[]).forEach(t=>{ const r=GRADE_RANK[t.grade]||0; if(r>maxGrade)maxGrade=r; });
+  const list=Array.isArray(config)?config:[];
+  return list.map(b=>{
+    let got=false, hint="", prog="";
+    if(b.type==="test"){ const v=Math.max(1,Number(b.value)||1); got=sent>=v; hint="ส่งแบบทดสอบ "+v+" บท"; prog=Math.min(sent,v)+"/"+v+" บท"; }
+    else if(b.type==="grade"){ const need=GRADE_RANK[b.value]||3; got=maxGrade>=need; hint='ได้คะแนน "'+b.value+'" ขึ้นไป'; prog=got?"ปลดล็อกแล้ว":"ยังไม่ได้"; }
+    else { const v=Math.max(1,Number(b.value)||1); got=read>=v; hint="อ่านครบ "+v+" บท"; prog=Math.min(read,v)+"/"+v+" บท"; }
+    return {ic:b.icon||"🏅", nm:b.name||"ตรา", got, hint, prog};
+  });
+}
+
+function renderBadges(list){
+  const got=list.filter(b=>b.got).length;
+  $("badge-summary").textContent=`ได้แล้ว ${got} / ${list.length} ตรา`+(got===list.length?" — ครบทุกตราแล้ว! 🎉":"");
+  const grid=$("badge-grid"); grid.innerHTML="";
+  list.forEach(b=>{ const d=document.createElement("div");
+    d.className="badge-card"+(b.got?"":" locked");
+    d.innerHTML=`<div class="badge-ic">${b.got?b.ic:"🔒"}</div>
+      <div class="badge-nm">${esc(b.nm)}</div>
+      <div class="badge-hint">${b.got?"ได้รับแล้ว 🎉":esc(b.hint)}</div>
+      <div class="badge-prog">${esc(b.prog)}</div>`;
+    grid.appendChild(d); });
+  if(got===list.length && got>0 && !sessionStorage.getItem("badgeAll")){
+    sessionStorage.setItem("badgeAll","1"); celebrate(); }
+}
+
+/* ===== แดชบอร์ดครู (สถิติ + ความก้าวหน้า) ===== */
+async function goDashboard(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-dashboard"); loading(true,"กำลังโหลดข้อมูลนักเรียน...");
+  try{ const [students,lessons,progress,recordings]=await Promise.all([
+      api("listStudents"),api("getLessons"),api("getProgressAll"),api("getRecordings")]);
+    loading(false); dashState={students,lessons,progress,recordings}; renderDashboard(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+function renderDashboard(){ const {students,lessons,progress}=dashState;
+  const map={}; progress.forEach(p=>{ (map[p.username]=map[p.username]||{})[p.lessonId]=p; });
+  $("dash-stats").innerHTML =
+    `<div class="stat"><div class="num">${students.length}</div><div class="lbl">👧 นักเรียน</div></div>`+
+    `<div class="stat"><div class="num">${lessons.length}</div><div class="lbl">📚 บทเรียน</div></div>`+
+    `<div class="stat"><div class="num">${(dashState.recordings||[]).length}</div><div class="lbl">🎧 เสียงอ่าน</div></div>`;
+
+  if(!students.length){ $("dash-progress").innerHTML=`<p class="muted">ยังไม่มีนักเรียน เพิ่มได้ที่เมนู "เพิ่ม / จัดการนักเรียน"</p>`; return; }
+  let head=`<tr><th>นักเรียน</th>`;
+  lessons.forEach(l=>head+=`<th>${esc(l.title)}</th>`); head+=`<th>บทล่าสุด</th></tr>`;
+  let body="";
+  students.forEach(s=>{ const prog=map[s.username]||{}; let latest=null;
+    Object.values(prog).forEach(p=>{ if(!latest||new Date(p.updatedAt)>new Date(latest.updatedAt)) latest=p; });
+    const latestTitle=latest?((lessons.find(l=>l.id===latest.lessonId)||{}).title||"-"):"-";
+    let row=`<tr><td class="sticky-name">${esc(s.displayName||s.username)}<div class="muted">${esc(s.username)}</div></td>`;
+    lessons.forEach(l=>{ const p=prog[l.id];
+      if(p&&p.totalCount){ const pct=Math.round(p.readCount/p.totalCount*100);
+        row+=`<td><div class="cellbar"><span style="width:${pct}%"></span></div><small>${p.readCount}/${p.totalCount}</small></td>`; }
+      else row+=`<td class="muted">-</td>`; });
+    row+=`<td>${esc(latestTitle)}</td></tr>`; body+=row; });
+  $("dash-progress").innerHTML=`<div class="ptable"><table>${head}${body}</table></div>`; }
+
+/* ===== เพิ่ม / จัดการนักเรียน ===== */
+async function goStudents(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-students"); loading(true,"กำลังโหลดรายชื่อนักเรียน...");
+  try{ const students=await api("listStudents"); loading(false); renderStudents(students); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+function renderStudents(students){
+  const ul=$("student-list"); ul.innerHTML="";
+  if(!students.length){ ul.innerHTML=`<li class="muted">ยังไม่มีนักเรียน</li>`; return; }
+  students.forEach(s=>{ const li=document.createElement("li"); li.className="row";
+    li.innerHTML=`<span class="main"><strong>${esc(s.displayName||s.username)}</strong>
+        <span class="tag">${esc(s.username)}</span></span>
+      <span class="acts">
+        <button class="mini" data-a="pw">🔑 ตั้ง PIN ใหม่</button>
+        <button class="mini" data-a="reset">♻️ ล้างผล</button>
+        <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
+    li.querySelector('[data-a="pw"]').onclick=()=>resetStudentPw(s);
+    li.querySelector('[data-a="reset"]').onclick=()=>resetStudentProgress(s);
+    li.querySelector('[data-a="del"]').onclick=()=>removeStudent(s);
+    ul.appendChild(li); }); }
+
+$("ds-add").addEventListener("click",async()=>{
+  const username=$("ds-username").value.trim(), password=$("ds-password").value.trim(), displayName=$("ds-name").value.trim();
+  if(!username||!displayName) return toast("กรอกชื่อผู้ใช้และชื่อที่แสดงของนักเรียน","error");
+  if(!/^\d{4}$/.test(password)) return toast("PIN ต้องเป็นตัวเลข 4 หลัก","error");
+  loading(true,"กำลังเพิ่มนักเรียน...");
+  try{ await api("addStudent",{username,password,displayName}); loading(false);
+    toast("เพิ่มนักเรียนแล้ว","success");
+    $("ds-username").value="";$("ds-password").value="";$("ds-name").value=""; goStudents(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+async function resetStudentPw(s){ const np=prompt(`ตั้ง PIN ใหม่ (ตัวเลข 4 หลัก) ให้ ${s.displayName||s.username}:`); if(np===null)return;
+  if(!/^\d{4}$/.test(np.trim())) return toast("PIN ต้องเป็นตัวเลข 4 หลัก","error");
+  loading(true,"กำลังตั้ง PIN ใหม่...");
+  try{ await api("setStudentPassword",{username:s.username,newPassword:np.trim()}); loading(false); toast("ตั้ง PIN ใหม่แล้ว","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+async function removeStudent(s){ if(!confirm(`ลบนักเรียน "${s.displayName||s.username}"?`)) return;
+  loading(true,"กำลังลบ...");
+  try{ await api("deleteStudent",{username:s.username}); loading(false); toast("ลบนักเรียนแล้ว","success"); goStudents(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+async function resetStudentProgress(s){
+  if(!confirm(`ล้างผลทั้งหมดของ "${s.displayName||s.username}"?\n(ดาว/จำนวนคำที่อ่าน + ผลทดสอบการอ่าน + เสียงอ่านจะถูกล้าง เพื่อให้ทำแบบทดสอบใหม่ได้ · ย้อนกลับไม่ได้)`)) return;
+  loading(true,"กำลังล้างผล...");
+  try{ await api("resetStudentProgress",{username:s.username}); loading(false);
+    toast("ล้างผลแล้ว นักเรียนทำแบบทดสอบใหม่ได้","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== เสียงอ่านของนักเรียน + ให้คะแนน (เลือกบท -> เลือกนักเรียน) ===== */
+let recState={lessons:[],recordings:[],students:[],tests:[]}, recCurrentLesson=null;
+
+async function goRecordings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-recordings");
+  $("rec-lessons-mode").style.display="block"; $("rec-detail-mode").style.display="none";
+  loading(true,"กำลังโหลดเสียงอ่าน...");
+  try{ const [lessons,recordings,students,tests]=await Promise.all([
+      api("getLessons"),api("getRecordings"),api("listStudents"),api("getTests")]);
+    recState={lessons,recordings,students,tests}; loading(false); renderRecLessons(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* โหมดเลือกบท: แสดงบทเรียนเป็นการ์ด พร้อมจำนวนเสียงอ่านในแต่ละบท */
+function renderRecLessons(){
+  const counts={}; (recState.recordings||[]).forEach(r=>{ counts[r.lessonId]=(counts[r.lessonId]||0)+1; });
+  const grid=$("rec-lesson-grid"); grid.innerHTML="";
+  $("rec-lessons-empty").style.display=recState.lessons.length?"none":"block";
+  recState.lessons.forEach(l=>{ const c=counts[l.id]||0;
+    const card=document.createElement("button"); card.className="lesson-card";
+    const cover=l.coverUrl
+      ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>📖</div>'">`
+      : `<div class="cover cover--empty">📖</div>`;
+    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">🎧 ${c} เสียงอ่าน</div></div>`;
+    card.addEventListener("click",()=>openRecLesson(l)); grid.appendChild(card); }); }
+
+/* เปิดบทที่เลือก -> มีดรอปดาวน์เลือกนักเรียนที่จะตรวจ */
+function openRecLesson(lesson){ recCurrentLesson=lesson;
+  $("rec-lessons-mode").style.display="none"; $("rec-detail-mode").style.display="block";
+  $("rec-lesson-title").textContent="🎧 "+lesson.title;
+  const sel=$("rec-filter-student");
+  let opts=`<option value="">— นักเรียนทุกคน —</option>`;
+  recState.students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+  sel.innerHTML=opts; sel.value="";
+  if(typeof stopAllRecordings==="function") stopAllRecordings();
+  $("rec-flag-only").checked=false;
+  renderRecList(); renderGradeBox();
+  $("rec-detail-mode").scrollIntoView({behavior:"smooth"}); }
+
+/* กล่องให้คะแนนการอ่านระดับบทเรียน — แสดงเมื่อเลือกนักเรียนเจาะจง */
+function renderGradeBox(){
+  const box=$("rec-grade-box"); const sel=$("rec-filter-student");
+  if(!sel.value){ box.style.display="none"; box.innerHTML=""; return; }
+  box.style.display="block";
+  const student=recState.students.find(s=>String(s.username).trim()===sel.value);
+  const t=(recState.tests||[]).find(t=>String(t.username).trim()===sel.value && String(t.lessonId)===String(recCurrentLesson.id));
+  const cur=t&&t.grade?t.grade:"";
+  const grades=["น้อย","พอใช้","ดี","ดีมาก","ดีเยี่ยม"];
+  const btns=grades.map(g=>`<button class="mini grade-btn ${cur===g?'sel':''}" data-g="${g}">${g}</button>`).join("");
+  let status = t ? (t.status==="graded" ? `ประเมินแล้ว: <strong>${esc(cur)}</strong>` : "นักเรียนส่งแล้ว · รอประเมิน")
+                 : "นักเรียนยังไม่ได้ส่งแบบทดสอบบทนี้ (ครูให้คะแนนล่วงหน้าได้)";
+  box.innerHTML=`<div class="section">
+    <h3 class="display" style="margin-bottom:8px">📋 ให้คะแนนการอ่าน — ${esc(student?(student.displayName||student.username):sel.value)}</h3>
+    <p class="hint">สถานะ: ${status}<br>เลือกระดับคะแนน แล้วผลจะไปกระพริบโชว์ในบทเรียนของนักเรียน</p>
+    <div class="grade-row">${btns}</div>
+    <div class="field" style="margin-top:14px">
+      <label for="grade-comment">💬 คำแนะนำสั้น ๆ ถึงเด็ก/ผู้ปกครอง (ไม่บังคับ)</label>
+      <textarea id="grade-comment" style="min-height:70px" placeholder="เช่น ออกเสียง ร ล ให้ชัดขึ้น"></textarea>
+    </div>
+    <button class="mini" id="grade-comment-save" style="margin-top:6px">💾 บันทึกคำแนะนำ</button></div>`;
+  $("grade-comment").value = (t&&t.comment) ? t.comment : "";
+  box.querySelectorAll(".grade-btn").forEach(b=>b.onclick=()=>saveGrade(sel.value,b.dataset.g,$("grade-comment").value));
+  $("grade-comment-save").onclick=()=>saveGrade(sel.value,cur,$("grade-comment").value); }
+
+async function saveGrade(username,grade,comment){
+  loading(true,"กำลังบันทึก...");
+  try{ await api("gradeTest",{username,lessonId:recCurrentLesson.id,grade,comment:comment||""}); loading(false);
+    let t=(recState.tests||[]).find(t=>String(t.username).trim()===username && String(t.lessonId)===String(recCurrentLesson.id));
+    if(t){ t.grade=grade; t.comment=comment||""; if(grade)t.status="graded"; }
+    else { (recState.tests=recState.tests||[]).push({username,lessonId:recCurrentLesson.id,grade,comment:comment||"",status:grade?"graded":"submitted"}); }
+    toast("บันทึกแล้ว"+(grade?" (คะแนน “"+grade+"”)":""),"success"); renderGradeBox(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+let recCurrentRows=[];
+function renderRecList(){
+  const sel=$("rec-filter-student");
+  let rows=(recState.recordings||[]).filter(r=>String(r.lessonId)===String(recCurrentLesson.id));
+  if(sel.value) rows=rows.filter(r=>String(r.username).trim()===sel.value);
+  if($("rec-flag-only").checked) rows=rows.filter(r=>r.flagged);
+  recCurrentRows=rows;
+  const ul=$("rec-list"); ul.innerHTML="";
+  if(!rows.length){ ul.innerHTML=`<li class="muted">${$("rec-flag-only").checked?"ไม่มีคำที่ติดธงในนี้":("ยังไม่มีเสียงอ่านในบทนี้"+(sel.value?" ของนักเรียนคนนี้":""))}</li>`;
+    $("rec-playall").disabled=true; return; }
+  $("rec-playall").disabled=false;
+  rows.forEach(r=>{ const li=document.createElement("li"); li.className="row"+(r.flagged?" flagged":""); li.dataset.rid=r.id;
+    let when="-"; try{ when=new Date(r.createdAt).toLocaleString("th-TH"); }catch(_){}
+    li.innerHTML=`<span class="main"><span>
+        <strong class="rec-line">${r.flagged?"🚩 ":"📖 "}${esc(r.wordText||"-")}</strong>
+        <div class="rec-line">👧 ${esc(r.displayName||r.username)}</div>
+        <div class="rec-line muted">🕒 ${esc(when)}</div></span></span>
+      <span class="acts">
+        <button class="mini" data-a="play">▶️ ฟัง</button>
+        <button class="mini ${r.flagged?'flag-on':''}" data-a="flag">${r.flagged?"🚩 ติดธงแล้ว":"🚩 ติดธง"}</button>
+        <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
+    li.querySelector('[data-a="play"]').onclick=(e)=>playRecording(r,e.currentTarget);
+    li.querySelector('[data-a="flag"]').onclick=(e)=>toggleFlag(r,e.currentTarget);
+    li.querySelector('[data-a="del"]').onclick=()=>deleteRecordingItem(r);
+    ul.appendChild(li); }); }
+
+/* ติดธง/ปลดธงคำที่เด็กอ่านพลาด */
+async function toggleFlag(r,btn){
+  const next=!r.flagged; btn.disabled=true;
+  try{ await api("setRecordingFlag",{id:r.id,flagged:next}); r.flagged=next;
+    if(dashState&&dashState.recordings){ const d=dashState.recordings.find(x=>x.id===r.id); if(d)d.flagged=next; }
+    btn.disabled=false; renderRecList();
+    toast(next?"ติดธงคำนี้แล้ว 🚩":"ปลดธงแล้ว","success"); }
+  catch(err){ btn.disabled=false; toast(err.message,"error"); } }
+
+/* ===== เล่นต่อเนื่องทุกคำ (ช่วยครูฟังรวดเดียว ไม่ต้องกดทีละคำ) ===== */
+let recAllPlaying=false, recAllIdx=0;
+function updatePlayAllBtn(){ $("rec-playall").style.display=recAllPlaying?"none":"inline-flex";
+  $("rec-stopall").style.display=recAllPlaying?"inline-flex":"none"; }
+function clearRecHighlight(){ $("rec-list").querySelectorAll(".row.playing").forEach(li=>li.classList.remove("playing")); }
+function highlightRec(id){ clearRecHighlight(); const li=$("rec-list").querySelector(`[data-rid="${id}"]`);
+  if(li){ li.classList.add("playing"); li.scrollIntoView({block:"nearest",behavior:"smooth"}); } }
+function playAllRecordings(){ if(!recCurrentRows.length)return; recAllPlaying=true; recAllIdx=0; updatePlayAllBtn(); playAllNext(); }
+function playAllNext(){
+  if(!recAllPlaying || recAllIdx>=recCurrentRows.length){ const done=recAllIdx>=recCurrentRows.length&&recCurrentRows.length;
+    stopAllRecordings(); if(done) toast("เล่นครบทุกคำแล้ว ✅","success"); return; }
+  const r=recCurrentRows[recAllIdx]; highlightRec(r.id);
+  resolveAudioSrc(r.fileId).then(src=>{ if(!recAllPlaying)return;
+    try{ if(recPlayer)recPlayer.pause(); }catch(_){}
+    recPlayer=new Audio(src);
+    recPlayer.onended=()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,500); };
+    recPlayer.onerror=()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,200); };
+    recPlayer.play().catch(()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,200); });
+  }).catch(()=>{ if(!recAllPlaying)return; recAllIdx++; setTimeout(playAllNext,200); }); }
+function stopAllRecordings(){ recAllPlaying=false; try{ if(recPlayer)recPlayer.pause(); }catch(_){} clearRecHighlight(); updatePlayAllBtn(); }
+$("rec-playall").addEventListener("click",playAllRecordings);
+$("rec-stopall").addEventListener("click",stopAllRecordings);
+$("rec-flag-only").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); });
+
+$("rec-back").addEventListener("click",()=>{
+  stopAllRecordings();
+  $("rec-detail-mode").style.display="none"; $("rec-lessons-mode").style.display="block";
+  renderRecLessons(); });
+$("rec-filter-student").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); renderGradeBox(); });
+$("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return; stopAllRecordings();
+  loading(true,"กำลังรีเฟรช...");
+  try{ const [recordings,tests]=await Promise.all([api("getRecordings"),api("getTests")]);
+    recState.recordings=recordings; recState.tests=tests; loading(false);
+    renderRecList(); renderGradeBox(); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+let recPlayer=null;
+async function playRecording(r,btn){
+  const old=btn.textContent; btn.disabled=true; btn.textContent="⏳ กำลังโหลด...";
+  try{ if(recPlayer){ try{recPlayer.pause();}catch(_){} }
+    const src=await resolveAudioSrc(r.fileId);
+    recPlayer=new Audio(src); await recPlayer.play();
+    btn.textContent="🔊 กำลังเล่น";
+    recPlayer.onended=()=>{ btn.disabled=false; btn.textContent=old; };
+  }catch(err){ toast("เล่นเสียงไม่ได้: "+err.message,"error"); btn.disabled=false; btn.textContent=old; } }
+
+async function deleteRecordingItem(r){
+  if(!confirm(`ลบเสียงอ่านคำว่า "${r.wordText||""}" ของ ${r.displayName||r.username}?`)) return;
+  loading(true,"กำลังลบเสียง...");
+  try{ await api("deleteRecording",{id:r.id}); loading(false);
+    recState.recordings=(recState.recordings||[]).filter(x=>x.id!==r.id);
+    if(dashState&&dashState.recordings) dashState.recordings=dashState.recordings.filter(x=>x.id!==r.id);
+    renderRecList(); toast("ลบเสียงแล้ว","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== รายงานรายบุคคล (ครู) — พิมพ์/บันทึก PDF ส่งผู้ปกครอง ===== */
+let reportState={students:[],lessons:[],progress:[],tests:[],badges:[],recordings:[]};
+async function goReport(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-report"); $("report-area").innerHTML=""; $("report-print").disabled=true;
+  loading(true,"กำลังโหลดข้อมูลรายงาน...");
+  try{ const [students,lessons,progress,tests,badges,recordings]=await Promise.all([
+      api("listStudents"),api("getLessons"),api("getProgressAll"),api("getTests"),api("getBadgeConfig"),api("getRecordings")]);
+    reportState={students,lessons,progress,tests,badges:Array.isArray(badges)?badges:[],recordings:recordings||[]};
+    loading(false);
+    const sel=$("report-student");
+    let opts=`<option value="">— เลือกนักเรียน —</option>`;
+    students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+    sel.innerHTML=opts; sel.value="";
+  }catch(err){ loading(false); toast(err.message,"error"); } }
+
+$("report-student").addEventListener("change",()=>{ const u=$("report-student").value;
+  if(!u){ $("report-area").innerHTML=""; $("report-print").disabled=true; return; }
+  renderReport(u); $("report-print").disabled=false; });
+$("report-print").addEventListener("click",()=>{ if($("report-student").value) window.print(); });
+
+function gradeHex(g){ return {"น้อย":"#d23a3a","พอใช้":"#c98300","ดี":"#2e9e6b","ดีมาก":"#2b86d6","ดีเยี่ยม":"#6d4fc4"}[g]||""; }
+
+function renderReport(username){
+  const key=String(username).trim();
+  const s=reportState.students.find(x=>String(x.username).trim()===key)||{username,displayName:username};
+  const lessons=reportState.lessons;
+  const prog={}; reportState.progress.filter(p=>String(p.username).trim()===key).forEach(p=>prog[p.lessonId]=p);
+  const tests={}; reportState.tests.filter(t=>String(t.username).trim()===key).forEach(t=>tests[t.lessonId]=t);
+  const badges=computeBadges(Object.values(prog),Object.values(tests),reportState.badges).filter(b=>b.got);
+
+  let rows="";
+  lessons.forEach(l=>{ const p=prog[l.id], t=tests[l.id];
+    const readTxt=(p&&Number(p.totalCount))?`${p.readCount}/${p.totalCount} คำ`:"ยังไม่ได้อ่าน";
+    let gradeTxt="—", color="";
+    if(t){ if(t.status==="graded"&&t.grade){ gradeTxt=t.grade; color=gradeHex(t.grade); } else gradeTxt="ส่งแล้ว (รอประเมิน)"; }
+    const comment=(t&&t.comment)?esc(t.comment):"—";
+    rows+=`<tr><td>${esc(l.title)}</td><td>${esc(readTxt)}</td><td class="rgrade" style="color:${color}">${esc(gradeTxt)}</td><td>${comment}</td></tr>`;
+  });
+  if(!lessons.length) rows=`<tr><td colspan="4" style="text-align:center;color:#6c7390">ยังไม่มีบทเรียน</td></tr>`;
+
+  const badgeHtml = badges.length
+    ? `<div class="rbadges">`+badges.map(b=>`<span class="rbadge">${b.ic} ${esc(b.nm)}</span>`).join("")+`</div>`
+    : `<p class="muted">ยังไม่ได้รับตรา</p>`;
+  // คำที่ครูติดธงไว้ (ควรฝึกเพิ่ม) — ไม่ซ้ำคำ
+  const flaggedWords=[...new Set((reportState.recordings||[])
+    .filter(r=>String(r.username).trim()===key && r.flagged)
+    .map(r=>String(r.wordText||"").trim()).filter(Boolean))];
+  const flaggedHtml = flaggedWords.length
+    ? `<div class="rbadges">`+flaggedWords.map(w=>`<span class="rbadge" style="background:#fff4f4;border-color:#ffc2c2">🚩 ${esc(w)}</span>`).join("")+`</div>`
+    : `<p class="muted">— ไม่มี —</p>`;
+  let when=""; try{ when=new Date().toLocaleDateString("th-TH",{year:"numeric",month:"long",day:"numeric"}); }catch(_){ when=""; }
+  const teacher=(state.user&&state.user.displayName)||"คุณครู";
+
+  $("report-area").innerHTML=`
+    <div class="report">
+      <div class="rhead">
+        <h2>รายงานผลการอ่านภาษาไทย</h2>
+        <div class="muted">โรงเรียนนิคมสร้างตนเอง 3 · ชั้นประถมศึกษาปีที่ 5</div>
+      </div>
+      <div class="rmeta"><div><b>ชื่อนักเรียน:</b> ${esc(s.displayName||s.username)}</div>
+        <div><b>วันที่ออกรายงาน:</b> ${esc(when)}</div></div>
+      <table>
+        <tr><th>บทเรียน</th><th>อ่านแล้ว</th><th>ผลทดสอบ</th><th>คำแนะนำจากคุณครู</th></tr>
+        ${rows}
+      </table>
+      <h3 class="display" style="margin:18px 0 6px;color:var(--teal-dark)">🚩 คำที่ควรฝึกเพิ่ม</h3>
+      ${flaggedHtml}
+      <h3 class="display" style="margin:18px 0 6px;color:var(--teal-dark)">🏅 ตราสะสมที่ได้รับ (${badges.length})</h3>
+      ${badgeHtml}
+      <div class="rsign">
+        <div class="col"><div class="line">ลงชื่อ ${esc(teacher)}<br>ครูผู้ประเมิน</div></div>
+        <div class="col"><div class="line">ลงชื่อ ..............................<br>ผู้ปกครอง</div></div>
+      </div>
+    </div>`;
+}
+
+/* ===== คู่มือการใช้งาน ===== */
+function goHelp(){ show("view-help"); }
+function goGuide(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error"); show("view-guide"); }
+
+/* ===== การตั้งค่าทั่วไป (เปลี่ยนรหัสผ่านครู + เริ่มเทอมใหม่) ===== */
+async function goSettings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-settings");
+  loading(true,"กำลังโหลดการตั้งค่า...");
+  try{ badgeCfg=await api("getBadgeConfig"); }catch(_){ badgeCfg=[]; }
+  loading(false); if(!Array.isArray(badgeCfg)) badgeCfg=[]; renderBadgeEditor(); }
+
+/* ===== ตั้งค่าตราสะสม (ครู) ===== */
+let badgeCfg=[];
+const BADGE_GRADES=["น้อย","พอใช้","ดี","ดีมาก","ดีเยี่ยม"];
+
+function renderBadgeEditor(){
+  const ul=$("badge-config-list"); ul.innerHTML="";
+  if(!badgeCfg.length){ ul.innerHTML=`<li class="muted">ยังไม่มีตรา กดปุ่ม "เพิ่มตรา" หรือ "คืนค่าเริ่มต้น"</li>`; return; }
+  badgeCfg.forEach((b,i)=>{ const li=document.createElement("li"); li.className="row";
+    const isGrade=b.type==="grade";
+    const gradeOpts=BADGE_GRADES.map(g=>`<option value="${g}" ${String(b.value)===g?"selected":""}>${g}</option>`).join("");
+    li.innerHTML=`<span class="bc-row">
+        <input class="bc-icon" maxlength="4" value="${esc(b.icon||"🏅")}" aria-label="ไอคอน">
+        <input class="bc-name" value="${esc(b.name||"")}" placeholder="ชื่อตรา" aria-label="ชื่อตรา">
+        <select class="bc-type" aria-label="เงื่อนไข">
+          <option value="read"  ${b.type==="read"?"selected":""}>อ่านครบ…บท</option>
+          <option value="test"  ${b.type==="test"?"selected":""}>ส่งทดสอบ…บท</option>
+          <option value="grade" ${isGrade?"selected":""}>ได้คะแนนระดับ…</option>
+        </select>
+        <input class="bc-num" type="number" min="1" value="${isGrade?3:(Number(b.value)||1)}" aria-label="จำนวนบท" style="${isGrade?"display:none":""}">
+        <select class="bc-grade" aria-label="ระดับคะแนน" style="${isGrade?"":"display:none"}">${gradeOpts}</select>
+        <button class="mini mini--danger bc-del" aria-label="ลบตรา">🗑️</button>
+      </span>`;
+    const typeSel=li.querySelector(".bc-type"), num=li.querySelector(".bc-num"), grd=li.querySelector(".bc-grade");
+    typeSel.addEventListener("change",()=>{ const g=typeSel.value==="grade"; num.style.display=g?"none":""; grd.style.display=g?"":"none"; });
+    li.querySelector(".bc-del").addEventListener("click",()=>{ badgeCfg=collectBadgeEditor(); badgeCfg.splice(i,1); renderBadgeEditor(); });
+    ul.appendChild(li); });
+}
+function collectBadgeEditor(){
+  const out=[];
+  $("badge-config-list").querySelectorAll("li.row").forEach((li,i)=>{
+    const type=li.querySelector(".bc-type").value;
+    const value= type==="grade" ? li.querySelector(".bc-grade").value
+                                 : Math.max(1, Number(li.querySelector(".bc-num").value)||1);
+    out.push({
+      id:(badgeCfg[i]&&badgeCfg[i].id)||("b"+Date.now()+"_"+i),
+      icon:(li.querySelector(".bc-icon").value.trim()||"🏅"),
+      name:(li.querySelector(".bc-name").value.trim()||"ตรา"),
+      type:type, value:value
+    });
+  });
+  return out;
+}
+$("badge-add").addEventListener("click",()=>{ badgeCfg=collectBadgeEditor();
+  badgeCfg.push({id:"b"+Date.now(),icon:"🏅",name:"ตราใหม่",type:"read",value:1}); renderBadgeEditor(); });
+$("badge-reset").addEventListener("click",()=>{ if(!confirm("คืนค่าตราสะสมเป็นชุดเริ่มต้น? (ยังไม่บันทึกจนกว่าจะกดบันทึก)"))return;
+  badgeCfg=[
+    {id:"b1",icon:"📖",name:"อ่านครบบทแรก",type:"read",value:1},
+    {id:"b2",icon:"📚",name:"นักอ่านขยัน",type:"read",value:3},
+    {id:"b3",icon:"🏆",name:"นักอ่านตัวยง",type:"read",value:5},
+    {id:"b4",icon:"🎤",name:"กล้าพูด",type:"test",value:1},
+    {id:"b5",icon:"🎙️",name:"นักพากย์",type:"test",value:3},
+    {id:"b6",icon:"⭐",name:"ดาวเด่น",type:"grade",value:"ดีมาก"},
+    {id:"b7",icon:"👑",name:"สุดยอดนักอ่าน",type:"grade",value:"ดีเยี่ยม"}
+  ]; renderBadgeEditor(); });
+$("badge-save").addEventListener("click",async()=>{
+  const badges=collectBadgeEditor();
+  loading(true,"กำลังบันทึกตราสะสม...");
+  try{ await api("saveBadgeConfig",{badges}); badgeCfg=badges; loading(false);
+    toast("บันทึกตราสะสมแล้ว 🏅","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+$("cp-save").addEventListener("click",async()=>{
+  const oldPassword=$("cp-old").value, newPassword=$("cp-new").value;
+  if(!oldPassword||!newPassword) return toast("กรอกรหัสผ่านเดิมและรหัสผ่านใหม่","error");
+  if(newPassword.length<6) return toast("รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร","error");
+  loading(true,"กำลังเปลี่ยนรหัสผ่าน...");
+  try{ const res=await api("changeMyPassword",{oldPassword,newPassword}); loading(false);
+    if(res&&res.token){ state.token=res.token; localStorage.setItem("session",JSON.stringify(state)); }
+    $("cp-old").value="";$("cp-new").value="";
+    toast("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว 🔐","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+$("reset-term").addEventListener("click",async()=>{
+  if(!confirm("เริ่มเทอมใหม่: ล้างความก้าวหน้า ผลทดสอบการอ่าน และเสียงอ่านของนักเรียนทุกคน ทุกบท?\nนักเรียนจะทำแบบทดสอบใหม่ได้ — การลบนี้ย้อนกลับไม่ได้")) return;
+  if(!confirm("ยืนยันอีกครั้ง: ข้อมูลดาว/จำนวนคำที่อ่าน ผลทดสอบ และเสียงอ่านของนักเรียนทุกคนจะหายทั้งหมด ต้องการดำเนินการต่อหรือไม่?")) return;
+  loading(true,"กำลังล้างข้อมูลทั้งหมด...");
+  try{ await api("resetAllProgress"); loading(false);
+    toast("เริ่มเทอมใหม่เรียบร้อย ♻️","success"); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+/* ===== หน้าครู: จัดการบทเรียนและคำ ===== */
+async function goAdmin(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-admin"); await loadAdminLessons(); }
+
+$("a-cover-file").addEventListener("change",async(e)=>{ const file=e.target.files[0]; if(!file)return;
+  loading(true,"กำลังอัปโหลดรูป...");
+  try{ const base64=await compressImage(file);
+    const res=await api("uploadImage",{dataBase64:base64,mimeType:"image/jpeg",name:file.name});
+    pendingCoverUrl=res.url; showPreview(res.url); loading(false); toast("อัปโหลดรูปปกแล้ว","success"); }
+  catch(err){ loading(false); toast("อัปโหลดรูปไม่สำเร็จ: "+err.message,"error"); } });
+$("a-cover-link").addEventListener("input",(e)=>{ const url=driveLinkToImage(e.target.value.trim());
+  pendingCoverUrl=url; if(url)showPreview(url); else $("a-preview").style.display="none"; });
+function showPreview(url){ $("a-preview-img").src=url; $("a-preview").style.display="block"; }
+function driveLinkToImage(v){ if(!v)return""; if(v.indexOf("lh3.googleusercontent.com")>=0)return v;
+  const m=v.match(/[-\w]{25,}/); return m?"https://lh3.googleusercontent.com/d/"+m[0]:v; }
+function compressImage(file,maxW=1280,quality=0.85){ return new Promise((resolve,reject)=>{ const reader=new FileReader();
+  reader.onload=()=>{ const img=new Image(); img.onload=()=>{ const scale=Math.min(1,maxW/img.width);
+    const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+    const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
+    resolve(c.toDataURL("image/jpeg",quality).split(",")[1]); }; img.onerror=reject; img.src=reader.result; };
+  reader.onerror=reject; reader.readAsDataURL(file); }); }
+
+$("a-add-lesson").addEventListener("click",async()=>{ const title=$("a-title").value.trim();
+  if(!title)return toast("ตั้งชื่อบทเรียนด้วยนะ","error"); loading(true,"กำลังบันทึก...");
+  try{ await api("addLesson",{title,coverUrl:pendingCoverUrl,order:Number($("a-order").value)||0}); loading(false);
+    toast("เพิ่มบทเรียนแล้ว","success");
+    $("a-title").value="";$("a-cover-file").value="";$("a-cover-link").value="";pendingCoverUrl="";$("a-preview").style.display="none";
+    loadAdminLessons(); } catch(err){ loading(false); toast(err.message,"error"); } });
+
+async function loadAdminLessons(){ loading(true,"กำลังโหลดบทเรียน...");
+  try{ const lessons=await api("getLessons"); loading(false);
+    const ul=$("admin-lessons"); ul.innerHTML="";
+    if(!lessons.length){ ul.innerHTML=`<li class="muted">ยังไม่มีบทเรียน</li>`; return; }
+    lessons.forEach(l=>{ const li=document.createElement("li"); li.className="row"+(l.id===adminLessonId?" active":"");
+      const thumb=l.coverUrl?`<img class="thumb" src="${esc(l.coverUrl)}" alt="">`:`<div class="thumb"></div>`;
+      li.innerHTML=`<span class="main">${thumb}<strong>${esc(l.title)}</strong><span class="muted">ลำดับ ${l.order}</span></span>
+        <span class="acts"><button class="mini" data-a="words">📝 จัดการคำ</button>
+          <button class="mini" data-a="edit">✏️ แก้ไข</button>
+          <button class="mini mini--danger" data-a="del">🗑️ ลบ</button></span>`;
+      li.querySelector('[data-a="words"]').onclick=()=>selectLesson(l);
+      li.querySelector('[data-a="edit"]').onclick=()=>editLesson(l);
+      li.querySelector('[data-a="del"]').onclick=()=>deleteLesson(l);
+      ul.appendChild(li); }); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+async function editLesson(l){ const title=prompt("แก้ชื่อบทเรียน:",l.title); if(title===null)return;
+  const order=prompt("ลำดับการแสดง (ตัวเลข):",l.order); if(order===null)return;
+  const cover=prompt("ลิงก์/ไอดีรูปปก (เว้นว่างได้):",l.coverUrl||""); if(cover===null)return;
+  loading(true,"กำลังบันทึก...");
+  try{ await api("updateLesson",{id:l.id,title:title.trim()||l.title,order:Number(order)||0,coverUrl:driveLinkToImage(cover.trim())});
+    loading(false); toast("แก้ไขแล้ว","success"); loadAdminLessons(); } catch(err){ loading(false); toast(err.message,"error"); } }
+
+async function deleteLesson(l){ if(!confirm(`ลบบทเรียน "${l.title}" และคำทั้งหมดในนั้น?`))return; loading(true,"กำลังลบ...");
+  try{ await api("deleteLesson",{id:l.id});
+    if(adminLessonId===l.id){adminLessonId=null;$("word-panel").style.display="none";}
+    loading(false); toast("ลบบทเรียนแล้ว","success"); loadAdminLessons(); } catch(err){ loading(false); toast(err.message,"error"); } }
+
+async function selectLesson(l){ adminLessonId=l.id; $("word-panel").style.display="block";
+  $("word-panel-title").textContent="คำในบทเรียน: "+l.title; loadAdminLessons(); await loadAdminWords();
+  $("word-panel").scrollIntoView({behavior:"smooth"}); }
+
+async function loadAdminWords(){ loading(true,"กำลังโหลดคำ...");
+  try{ const words=await api("getWords",{lessonId:adminLessonId}); loading(false);
+    const ul=$("admin-words"); ul.innerHTML="";
+    if(!words.length){ ul.innerHTML=`<li class="muted">ยังไม่มีคำ วางคำด้านล่างเพื่อเพิ่ม</li>`; return; }
+    words.forEach((w,i)=>{ const li=document.createElement("li"); li.className="row";
+      const hasAudio=w.audioUrl?`<span class="tag">🎵 มีเสียงครู</span>`:"";
+      li.innerHTML=`<span class="main"><strong class="word-text">${esc(w.text)}</strong>${hasAudio}</span>
+        <span class="acts">
+          <button class="mini" data-a="up" ${i===0?"disabled":""}>⬆️</button>
+          <button class="mini" data-a="down" ${i===words.length-1?"disabled":""}>⬇️</button>
+          <button class="mini" data-a="play">🔊 ฟัง</button>
+          <button class="mini" data-a="rec">🎙️ เพิ่มเสียง</button>
+          <button class="mini" data-a="edit">✏️</button>
+          <button class="mini mini--danger" data-a="del">🗑️</button></span>`;
+      li.querySelector('[data-a="up"]').onclick=()=>swapWord(words,i,-1);
+      li.querySelector('[data-a="down"]').onclick=()=>swapWord(words,i,1);
+      li.querySelector('[data-a="play"]').onclick=()=>speak(w.text,w.audioUrl);
+      li.querySelector('[data-a="rec"]').onclick=()=>openRecorder(w);
+      li.querySelector('[data-a="edit"]').onclick=()=>editWord(w);
+      li.querySelector('[data-a="del"]').onclick=()=>deleteWord(w);
+      ul.appendChild(li); }); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+$("a-add-words").addEventListener("click",async()=>{ const list=$("bulk-words").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(!list.length)return toast("ยังไม่ได้พิมพ์คำเลยนะ","error"); loading(true,"กำลังเพิ่มคำ...");
+  try{ const res=await api("addWords",{lessonId:adminLessonId,words:list}); loading(false); $("bulk-words").value="";
+    toast(`เพิ่ม ${res.added} คำแล้ว`,"success"); loadAdminWords(); } catch(err){ loading(false); toast(err.message,"error"); } });
+
+async function swapWord(words,i,dir){ const other=words[i+dir]; if(!other)return; loading(true,"กำลังจัดลำดับ...");
+  try{ await api("reorderWord",{idA:words[i].id,orderA:other.order,idB:other.id,orderB:words[i].order}); loading(false); loadAdminWords(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+async function editWord(w){ const text=prompt("แก้ไขคำ:",w.text); if(text===null)return;
+  if(!text.trim())return toast("คำห้ามว่าง","error"); loading(true,"กำลังบันทึก...");
+  try{ await api("updateWord",{id:w.id,text:text.trim()}); loading(false); toast("แก้ไขแล้ว","success"); loadAdminWords(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+async function deleteWord(w){ if(!confirm(`ลบคำว่า "${w.text}"?`))return; loading(true,"กำลังลบ...");
+  try{ await api("deleteWord",{id:w.id}); loading(false); toast("ลบคำแล้ว","success"); loadAdminWords(); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+/* ===== อัดเสียงครู / นักเรียน (MediaRecorder) ===== */
+let rec={mr:null,chunks:[],blob:null,stream:null,word:null,mode:"teacher"};
+function pickAudioMime(){ if(!window.MediaRecorder)return"";
+  return ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"].find(m=>{try{return MediaRecorder.isTypeSupported(m)}catch(_){return false}})||""; }
+function blobToBase64(blob){ return new Promise((res,rej)=>{ const r=new FileReader();
+  r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
+
+function openRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word,mode:"teacher"};
+  $("rec-title").textContent="อัด/เพิ่มเสียงคำว่า: "+word.text;
+  $("rec-status").textContent=word.audioUrl?"มีเสียงอยู่แล้ว — อัดใหม่หรือเลือกไฟล์เพื่อแทนที่ได้":"พร้อมอัด";
+  $("rec-file").value="";
+  const a=$("rec-audio"); a.src=""; a.style.display="none";
+  if(word.audioUrl){ resolveAudioSrc(word.audioUrl).then(src=>{a.src=src;a.style.display="block";}).catch(()=>{}); }
+  $("rec-start").style.display="inline-flex";$("rec-stop").style.display="none";$("rec-save").style.display="none";
+  $("rec-overlay").style.display="flex"; }
+
+/* โหมดทดสอบ: นักเรียนอัดเสียงคำ -> เก็บไว้ในเครื่องก่อน (ยังไม่ส่ง) จนกว่าจะกด "ส่ง" */
+function openTestRecorder(word){ rec={mr:null,chunks:[],blob:null,stream:null,word,mode:"test"};
+  const existing=testBlobs[word.id]||null;
+  $("rec-title").textContent="อ่านคำว่า: "+word.text;
+  $("rec-status").textContent=existing?"อัดไว้แล้ว — อัดใหม่เพื่อแทนที่ได้":"กด 🎙️ เริ่มอัด แล้วอ่านออกเสียงคำนี้ จากนั้นฟังทวนและกดบันทึก";
+  $("rec-file").value="";
+  const a=$("rec-audio");
+  if(existing){ rec.blob=existing.blob; a.src=URL.createObjectURL(existing.blob); a.style.display="block"; }
+  else { a.src=""; a.style.display="none"; }
+  $("rec-start").style.display="inline-flex";$("rec-stop").style.display="none";
+  $("rec-save").style.display=existing?"inline-flex":"none";
+  $("rec-overlay").style.display="flex"; }
+
+$("rec-file").addEventListener("change",(e)=>{ const file=e.target.files[0]; if(!file)return;
+  rec.blob=file;
+  const a=$("rec-audio"); a.src=URL.createObjectURL(file); a.style.display="block";
+  $("rec-save").style.display="inline-flex";
+  $("rec-start").style.display="inline-flex"; $("rec-stop").style.display="none";
+  $("rec-status").textContent="เลือกไฟล์แล้ว: "+file.name+" — ฟังก่อนได้ ถ้าโอเคกดบันทึก"; });
+
+$("rec-start").addEventListener("click",async()=>{
+  const sup=recordingSupport();
+  if(!sup.ok){ toast("เครื่องนี้อัดเสียงไม่ได้ ลองเปิดด้วย Chrome/Safari หรือเลือกไฟล์เสียงจากเครื่องแทน","error"); return; }
+  try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const mime=pickAudioMime();
+    const mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+    rec.mr=mr; rec.chunks=[]; rec.stream=stream; rec.blob=null;
+    mr.ondataavailable=e=>{ if(e.data&&e.data.size)rec.chunks.push(e.data); };
+    mr.onstop=()=>{ rec.blob=new Blob(rec.chunks,{type:mr.mimeType||mime||"audio/webm"});
+      const a=$("rec-audio"); a.src=URL.createObjectURL(rec.blob); a.style.display="block";
+      $("rec-save").style.display="inline-flex"; $("rec-status").textContent="อัดเสร็จแล้ว ฟังก่อนได้ ถ้าโอเคกดบันทึก";
+      if(rec.stream)rec.stream.getTracks().forEach(t=>t.stop()); };
+    mr.start();
+    $("rec-start").style.display="none";$("rec-stop").style.display="inline-flex";
+    $("rec-save").style.display="none";$("rec-audio").style.display="none";
+    $("rec-status").textContent="⏺️ กำลังอัด... ออกเสียงได้เลย"; }
+  catch(err){
+    let msg="ใช้ไมโครโฟนไม่ได้";
+    const n=err&&err.name;
+    if(n==="NotAllowedError"||n==="SecurityError") msg="ยังไม่ได้อนุญาตให้ใช้ไมโครโฟน — กรุณากด “อนุญาต/Allow” เมื่อเบราว์เซอร์ถาม แล้วลองใหม่";
+    else if(n==="NotFoundError"||n==="DevicesNotFoundError") msg="ไม่พบไมโครโฟนในเครื่องนี้";
+    else if(n==="NotReadableError") msg="ไมโครโฟนถูกแอปอื่นใช้อยู่ ปิดแอปที่ใช้ไมค์แล้วลองใหม่";
+    else if(inAppBrowser()) msg="อัดเสียงในแอปนี้ไม่ได้ ให้เปิดหน้านี้ใน Chrome/Safari แล้วลองใหม่";
+    $("rec-status").textContent=msg; toast(msg,"error");
+  } });
+
+$("rec-stop").addEventListener("click",()=>{ if(rec.mr&&rec.mr.state!=="inactive")rec.mr.stop();
+  $("rec-stop").style.display="none"; $("rec-start").style.display="inline-flex"; });
+
+$("rec-save").addEventListener("click",async()=>{ if(!rec.blob)return;
+  if(rec.mode==="test"){
+    // เก็บเสียงไว้ในเครื่องก่อน จะอัปโหลดทั้งหมดตอนกด "ส่งให้คุณครู"
+    testBlobs[rec.word.id]={blob:rec.blob,mime:rec.blob.type};
+    markTestWordDone(rec.word.id);
+    toast("อัดคำนี้แล้ว ✅","success"); closeRec();
+    return;
+  }
+  loading(true,"กำลังบันทึกเสียง...");
+  try{ const b64=await blobToBase64(rec.blob);
+    const up=await api("uploadAudio",{dataBase64:b64,mimeType:rec.blob.type,name:"voice_"+rec.word.id});
+    await api("updateWord",{id:rec.word.id,audioUrl:up.url}); loading(false);
+    toast("บันทึกเสียงครูแล้ว 🎵","success"); closeRec(); loadAdminWords(); }
+  catch(err){ loading(false); toast("บันทึกเสียงไม่สำเร็จ: "+err.message,"error"); } });
+
+$("rec-close").addEventListener("click",closeRec);
+function closeRec(){ if(rec.stream)rec.stream.getTracks().forEach(t=>t.stop());
+  if(rec.mr&&rec.mr.state!=="inactive"){try{rec.mr.stop()}catch(_){}}
+  $("rec-overlay").style.display="none"; const a=$("rec-audio"); a.pause(); a.src=""; }
+
+/* ===== เริ่มต้นแอป ===== */
+(function init(){ const saved=localStorage.getItem("session");
+  if(saved){ try{ state=JSON.parse(saved);
+    if(state.token&&state.user){ setSession(state.user,state.token); routeHome(); return; } }catch(_){} }
+  show("view-login"); resetLoginUI(); maybeShowInstall(); })();
+</script>
+</body>
+</html>
