@@ -204,6 +204,11 @@ img{display:block;max-width:100%}
 .row.playing{background:#e7fbfb;box-shadow:inset 0 0 0 2px var(--teal)}
 .row.flagged{background:#fff4f4;box-shadow:inset 0 0 0 2px #ffc2c2}
 .mini.flag-on{background:#ffe9e9;color:var(--danger)}
+.rec-loadbar{display:none;align-items:center;gap:10px;background:#eef7ff;border:2px solid #cfe6ff;border-radius:14px;padding:11px 14px;margin-bottom:8px;color:#0f5e8a;font-weight:700}
+.rec-loadbar .bar{flex:1;height:10px;border-radius:999px;background:#d7e8fb;overflow:hidden;min-width:90px}
+.rec-loadbar .bar > i{display:block;height:100%;width:0;background:var(--teal);transition:width .2s}
+.spinner-sm{width:18px;height:18px;flex:0 0 auto;border-radius:50%;border:3px solid #cfe6ff;border-top-color:var(--teal);animation:recspin .8s linear infinite}
+@keyframes recspin{to{transform:rotate(360deg)}}
 .row .main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .row .thumb{width:84px;height:48px;object-fit:cover;border-radius:8px;background:#dfe7f5}
 .row .word-text{font-size:1.4rem}
@@ -506,6 +511,7 @@ textarea{resize:vertical;min-height:150px}
           <label class="rec-line" style="display:flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" id="rec-flag-only"> แสดงเฉพาะคำที่ติดธง 🚩</label>
         </div>
+        <div id="rec-loadbar" class="rec-loadbar"></div>
         <ul id="rec-list" class="list"></ul>
       </div>
       <div id="rec-grade-box" style="display:none"></div>
@@ -1418,6 +1424,7 @@ function openRecLesson(lesson){ recCurrentLesson=lesson;
   recState.students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
   sel.innerHTML=opts; sel.value="";
   if(typeof stopAllRecordings==="function") stopAllRecordings();
+  recPreloadToken++; $("rec-loadbar").style.display="none";
   $("rec-flag-only").checked=false;
   renderRecList(); renderGradeBox();
   $("rec-detail-mode").scrollIntoView({behavior:"smooth"}); }
@@ -1513,18 +1520,55 @@ function playAllNext(){
 function stopAllRecordings(){ recAllPlaying=false; try{ if(recPlayer)recPlayer.pause(); }catch(_){} clearRecHighlight(); updatePlayAllBtn(); }
 $("rec-playall").addEventListener("click",playAllRecordings);
 $("rec-stopall").addEventListener("click",stopAllRecordings);
-$("rec-flag-only").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); });
+$("rec-flag-only").addEventListener("change",()=>{ stopAllRecordings(); renderRecList();
+  if($("rec-filter-student").value) preloadCurrentStudentAudio(); });
+
+/* ===== โหลดเสียงทุกคำของนักเรียนล่วงหน้า (มีเปอร์เซ็นต์) เพื่อเล่นต่อเนื่องได้ลื่น ===== */
+let recPreloadToken=0;
+function setLoadbar(done,total){
+  const pct=total?Math.round(done/total*100):100;
+  $("rec-loadbar").innerHTML=
+    `<span class="spinner-sm"></span><span>กำลังโหลดเสียง ${done}/${total}</span>`+
+    `<span class="bar"><i style="width:${pct}%"></i></span><span>${pct}%</span>`;
+}
+async function preloadCurrentStudentAudio(){
+  const bar=$("rec-loadbar");
+  const rows=recCurrentRows.slice();
+  recPreloadToken++; const myToken=recPreloadToken;
+  const toLoad=rows.filter(r=>r.fileId && !audioCache[r.fileId]);
+  if(!rows.length){ bar.style.display="none"; return; }
+  if(!toLoad.length){ bar.style.display="none"; $("rec-playall").disabled=false; return; }   // โหลดครบแล้ว
+  bar.style.display="flex"; $("rec-playall").disabled=true;
+  let done=0; const total=toLoad.length; setLoadbar(0,total);
+  const queue=toLoad.slice(); const CONC=3;
+  async function worker(){
+    while(queue.length){
+      if(myToken!==recPreloadToken) return;
+      const r=queue.shift();
+      try{ await resolveAudioSrc(r.fileId); }catch(_){}
+      if(myToken!==recPreloadToken) return;
+      done++; setLoadbar(done,total);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(CONC,total)},()=>worker()));
+  if(myToken!==recPreloadToken) return;   // เปลี่ยนนักเรียนระหว่างโหลด -> ยกเลิก
+  bar.style.display="none"; $("rec-playall").disabled=false;
+  toast("โหลดเสียงครบแล้ว เล่นต่อเนื่องได้เลย ▶️","success");
+}
 
 $("rec-back").addEventListener("click",()=>{
-  stopAllRecordings();
+  stopAllRecordings(); recPreloadToken++; $("rec-loadbar").style.display="none";
   $("rec-detail-mode").style.display="none"; $("rec-lessons-mode").style.display="block";
   renderRecLessons(); });
-$("rec-filter-student").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); renderGradeBox(); });
+$("rec-filter-student").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); renderGradeBox();
+  if($("rec-filter-student").value) preloadCurrentStudentAudio();
+  else { recPreloadToken++; $("rec-loadbar").style.display="none"; } });
 $("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return; stopAllRecordings();
   loading(true,"กำลังรีเฟรช...");
   try{ const [recordings,tests]=await Promise.all([api("getRecordings"),api("getTests")]);
     recState.recordings=recordings; recState.tests=tests; loading(false);
-    renderRecList(); renderGradeBox(); }
+    renderRecList(); renderGradeBox();
+    if($("rec-filter-student").value) preloadCurrentStudentAudio(); }
   catch(err){ loading(false); toast(err.message,"error"); } });
 
 let recPlayer=null;
