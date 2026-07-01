@@ -1428,7 +1428,7 @@ function initWrCanvas(){
     const s=wrState.strokes[wrState.strokes.length-1]; if(s){ s.push(pos(e)); redrawWrCanvas(); } });
   window.addEventListener("pointerup",()=>{ wrDrawing=false; }); }
 function redrawWrCanvas(){ const c=$("wr-canvas"); if(!c) return; const ctx=c.getContext("2d");
-  ctx.clearRect(0,0,c.width,c.height); ctx.lineWidth=6; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#28324a";
+  ctx.clearRect(0,0,c.width,c.height); ctx.lineWidth=11; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#111";
   (wrState.strokes||[]).forEach(s=>{ if(!s.length)return; ctx.beginPath(); ctx.moveTo(s[0].x,s[0].y);
     s.forEach(p=>ctx.lineTo(p.x,p.y)); if(s.length===1)ctx.lineTo(s[0].x+0.1,s[0].y+0.1); ctx.stroke(); }); }
 
@@ -1444,7 +1444,11 @@ function ensureTess(){
   tessPrep=(async()=>{
     await loadScriptOnce("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
     tessWorker=await Tesseract.createWorker("tha");
-    try{ await tessWorker.setParameters({ tessedit_pageseg_mode:"7" }); }catch(_){}
+    try{
+      let thai=""; for(let cp=0x0E01;cp<=0x0E3A;cp++) thai+=String.fromCharCode(cp);
+      for(let cp=0x0E40;cp<=0x0E4E;cp++) thai+=String.fromCharCode(cp);
+      await tessWorker.setParameters({ tessedit_pageseg_mode:"7", tessedit_char_whitelist:thai });
+    }catch(_){}
     tessReady=true;
   })();
   return tessPrep;
@@ -1455,9 +1459,37 @@ function prewarmTess(){
   st.textContent="⏳ กำลังเตรียมตัวอ่านลายมือ (ครั้งแรกอาจช้าสักครู่)...";
   ensureTess().then(()=>{ st.textContent="✓ ตัวอ่านลายมือพร้อมแล้ว เขียนแล้วกดตรวจได้เลย"; })
     .catch(()=>{ tessFailed=true; st.textContent="⚠️ เตรียมตัวอ่านไม่สำเร็จ จะใช้แบบเทียบเฉลยเองแทน"; }); }
-function canvasToImage(){ const c=$("wr-canvas"); const t=document.createElement("canvas");
-  t.width=c.width; t.height=c.height; const x=t.getContext("2d");
-  x.fillStyle="#fff"; x.fillRect(0,0,t.width,t.height); x.drawImage(c,0,0); return t.toDataURL("image/png"); }
+function canvasToImage(){
+  const c=$("wr-canvas");
+  // 1) หากรอบสี่เหลี่ยมที่มีตัวเขียนจริง (จากลายเส้น) เพื่อตัดขอบว่างออก
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,has=false;
+  (wrState.strokes||[]).forEach(s=>s.forEach(p=>{ has=true;
+    if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y; if(p.x>maxX)maxX=p.x; if(p.y>maxY)maxY=p.y; }));
+  if(!has){ const t0=document.createElement("canvas"); t0.width=c.width; t0.height=c.height;
+    const x0=t0.getContext("2d"); x0.fillStyle="#fff"; x0.fillRect(0,0,t0.width,t0.height); x0.drawImage(c,0,0); return t0.toDataURL("image/png"); }
+  const sp=16;                                   // เผื่อความหนาเส้น
+  minX=Math.max(0,minX-sp); minY=Math.max(0,minY-sp);
+  maxX=Math.min(c.width,maxX+sp); maxY=Math.min(c.height,maxY+sp);
+  const cw=Math.max(1,maxX-minX), ch=Math.max(1,maxY-minY);
+  // 2) ขยายภาพให้ใหญ่ขึ้น (ด้านยาวสุด ~400px, อย่างน้อย 2 เท่า)
+  const scale=Math.min(6, Math.max(2, 400/Math.max(cw,ch)));
+  const border=28;                               // ขอบขาวรอบตัวอักษร
+  const ow=Math.round(cw*scale)+border*2, oh=Math.round(ch*scale)+border*2;
+  const t=document.createElement("canvas"); t.width=ow; t.height=oh;
+  const x=t.getContext("2d");
+  x.fillStyle="#fff"; x.fillRect(0,0,ow,oh);
+  x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high";
+  x.drawImage(c, minX,minY,cw,ch, border,border, Math.round(cw*scale),Math.round(ch*scale));
+  // 3) แปลงเป็นขาว-ดำชัด (ตัวดำ พื้นขาว)
+  const img=x.getImageData(0,0,ow,oh); const d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    const lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    const v=lum<150?0:255;
+    d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+  }
+  x.putImageData(img,0,0);
+  return t.toDataURL("image/png");
+}
 
 /* ----- ตรวจคำตอบ ----- */
 function normAns(s){ return String(s||"").replace(/\s+/g,"").trim(); }
