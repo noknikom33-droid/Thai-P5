@@ -501,10 +501,22 @@ textarea{resize:vertical;min-height:150px}
 <!-- หน้าครู: คะแนนการเขียน -->
 <section id="view-writing-scores" class="view">
   <div class="container">
-    <h2 class="display" style="margin-bottom:8px">📝 คะแนนการเขียน</h2>
-    <p class="muted">คะแนนล่าสุดของนักเรียนแต่ละคนในแต่ละบท (ระบบตรวจอัตโนมัติ)</p>
-    <button class="mini" id="wrs-refresh" style="margin-bottom:10px">🔄 รีเฟรช</button>
-    <div id="wrs-table"></div>
+    <div id="wrs-lessons-mode">
+      <h2 class="display" style="margin-bottom:8px">📝 คะแนนการเขียน</h2>
+      <p class="muted">เลือกบทเรียนเพื่อดูคะแนนและคำที่นักเรียนเขียนถูก/ผิดเป็นรายข้อ</p>
+      <button class="mini" id="wrs-refresh" style="margin-bottom:10px">🔄 รีเฟรช</button>
+      <div id="wrs-lesson-grid" class="lesson-grid"></div>
+      <div id="wrs-empty" class="muted" style="display:none;text-align:center;padding:40px">ยังไม่มีนักเรียนทำแบบทดสอบการเขียน 🐣</div>
+    </div>
+    <div id="wrs-detail-mode" style="display:none">
+      <button class="mini" id="wrs-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
+      <h2 class="display" id="wrs-lesson-title"></h2>
+      <div class="section" style="margin-top:12px">
+        <div class="field"><label for="wrs-student">เลือกนักเรียน</label>
+          <select id="wrs-student"><option value="">— เลือกนักเรียน —</option></select></div>
+        <div id="wrs-detail"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -1380,7 +1392,7 @@ async function openWritingLesson(lesson){
   loading(true,"กำลังเปิดแบบทดสอบ...");
   try{ const words=await api("getWords",{lessonId:lesson.id});
     if(!words.length){ loading(false); return toast("บทนี้ยังไม่มีคำให้ทดสอบ","error"); }
-    wrState={lesson,words:shuffleArr(words.slice()),idx:0,score:0,mode:"type",strokes:[]};
+    wrState={lesson,words:shuffleArr(words.slice()),idx:0,score:0,mode:"type",strokes:[],results:[]};
     try{ await preloadAudio(wrState.words); }catch(_){}
     loading(false);
     $("wr-lessons-mode").style.display="none"; $("wr-quiz-mode").style.display="block";
@@ -1453,21 +1465,24 @@ function selfCheckPopup(w){
   showWrPopup({ icon:"📝", title:"เทียบกับเฉลย",
     msg:`คำที่ถูกคือ <b style="font-size:1.7rem;color:var(--teal-dark)">${esc(w.text)}</b><br>หนูเขียนถูกไหม?`,
     actions:[
-      {label:"✅ เขียนถูก",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(true); }},
-      {label:"❌ ยังไม่ถูก",cls:"btn btn--danger",onClick:()=>{ closeWrPopup(); recordResult(false); }}
+      {label:"✅ เขียนถูก",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(true,"(เขียนด้วยมือ)"); }},
+      {label:"❌ ยังไม่ถูก",cls:"btn btn--danger",onClick:()=>{ closeWrPopup(); recordResult(false,"(เขียนด้วยมือ)"); }}
     ] }); }
-function resultPopup(correct,answer,extra){
+function resultPopup(correct,answer,extra,ans){
   showWrPopup({ icon:correct?"✅":"❌", title:correct?"ถูกต้อง!":"ยังไม่ถูก",
     msg:(correct?"เก่งมาก! 🎉":`เฉลย: <b style="font-size:1.5rem;color:var(--teal-dark)">${esc(answer)}</b>`)+
         (extra?`<br><span style="font-size:.9rem;color:#6c7390">${esc(extra)}</span>`:""),
-    actions:[{label:"ตกลง",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(correct); }}] }); }
+    actions:[{label:"ตกลง",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(correct, ans!==undefined?ans:""); }}] }); }
 
 async function wrCheck(){
   const w=wrState.words[wrState.idx]; if(!w) return;
   if(wrState.mode==="type"){
     const ans=$("wr-input").value;
     if(!normAns(ans)) return toast("พิมพ์คำตอบก่อนนะ","error");
-    resultPopup(normAns(ans)===normAns(w.text), w.text);
+    const correct=normAns(ans)===normAns(w.text);
+    showWrPopup({ icon:correct?"✅":"❌", title:correct?"ถูกต้อง!":"ยังไม่ถูก",
+      msg: correct?"เก่งมาก! 🎉":`เฉลย: <b style="font-size:1.5rem;color:var(--teal-dark)">${esc(w.text)}</b>`,
+      actions:[{label:"ตกลง",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(correct, ans); }}] });
     return;
   }
   // โหมดเขียนด้วยมือ
@@ -1480,16 +1495,22 @@ async function wrCheck(){
     loading(false);
     const read=normAns((data&&data.text)||""); const target=normAns(w.text);
     const correct = !!target && (read===target || read.indexOf(target)>=0);
-    resultPopup(correct, w.text, "AI อ่านได้ว่า: "+(((data&&data.text)||"").trim()||"—"));
+    const ocrText=(((data&&data.text)||"").trim())||"—";
+    resultPopup(correct, w.text, "AI อ่านได้ว่า: "+ocrText, ocrText);
   }catch(e){ loading(false); tessFailed=true; toast("อ่านลายมือไม่สำเร็จ ใช้แบบเทียบเฉลยเองแทน","error"); selfCheckPopup(w); }
 }
-function recordResult(correct){ if(correct) wrState.score++; nextWriteQuestion(); }
+function recordResult(correct, ans){
+  const w=wrState.words[wrState.idx];
+  (wrState.results=wrState.results||[]).push({ w:(w&&w.text)||"", ok:!!correct, ans:String(ans||""), mode:wrState.mode });
+  if(correct) wrState.score++;
+  nextWriteQuestion();
+}
 function nextWriteQuestion(){ wrState.idx++;
   if(wrState.idx>=wrState.words.length){ finishWriting(); return; } renderWriteQuestion(); }
 
 async function finishWriting(){
   const total=wrState.words.length, score=wrState.score, pct=total?Math.round(score/total*100):0;
-  try{ await api("submitWritingScore",{lessonId:wrState.lesson.id,score,total}); }catch(_){}
+  try{ await api("submitWritingScore",{lessonId:wrState.lesson.id,score,total,detail:(wrState.results||[])}); }catch(_){}
   const emo=pct>=80?"🏆":pct>=50?"😀":"💪";
   const word=pct>=80?"เยี่ยมมาก!":pct>=50?"เก่งขึ้นเยอะ!":"ฝึกอีกนิดนะ สู้ ๆ!";
   showWrPopup({ icon:emo, title:"สรุปผลคะแนน",
@@ -1518,29 +1539,82 @@ $("wr-undo").addEventListener("click",()=>{ if(wrState.strokes&&wrState.strokes.
 $("wr-clear").addEventListener("click",()=>{ wrState.strokes=[]; redrawWrCanvas(); });
 $("wr-back").addEventListener("click",()=>{ $("wr-quiz-mode").style.display="none"; $("wr-lessons-mode").style.display="block"; });
 
-/* ===== คะแนนการเขียน (ครู) ===== */
+/* ===== คะแนนการเขียน (ครู) — เลือกบท -> เลือกนักเรียน -> รายข้อ ===== */
+let wrsState={scores:[],lessons:[]};
 async function goWritingScores(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
-  show("view-writing-scores"); loading(true,"กำลังโหลดคะแนน...");
+  show("view-writing-scores");
+  $("wrs-detail-mode").style.display="none"; $("wrs-lessons-mode").style.display="block";
+  loading(true,"กำลังโหลดคะแนน...");
   try{ const [scores,lessons]=await Promise.all([api("getWritingScores"),api("getLessons")]);
-    loading(false); renderWritingScores(scores,lessons); }
+    wrsState={scores:scores||[],lessons:lessons||[]}; loading(false); renderWrsLessons(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 $("wrs-refresh").addEventListener("click",goWritingScores);
-function renderWritingScores(scores,lessons){
-  const cont=$("wrs-table");
-  if(!scores.length){ cont.innerHTML=`<p class="muted">ยังไม่มีนักเรียนทำแบบทดสอบการเขียน</p>`; return; }
-  const lmap={}; lessons.forEach(l=>lmap[l.id]=l.title);
-  const byUser={};
-  scores.forEach(s=>{ (byUser[s.username]=byUser[s.username]||{name:s.displayName||s.username,items:[]}).items.push(s); });
-  let html="";
-  Object.keys(byUser).forEach(u=>{ const g=byUser[u];
-    html+=`<div class="report" style="box-shadow:var(--shadow);padding:18px;margin-bottom:14px;max-width:100%">
-      <h3 class="display" style="margin-bottom:8px;color:var(--teal-dark)">👧 ${esc(g.name)}</h3>
-      <table><tr><th>บทเรียน</th><th>คะแนน</th><th>เปอร์เซ็นต์</th><th>เมื่อ</th></tr>`;
-    g.items.forEach(it=>{ const pct=it.total?Math.round(it.score/it.total*100):0; let when=""; try{when=new Date(it.createdAt).toLocaleString("th-TH");}catch(_){}
-      const color=pct>=80?"#2e9e6b":pct>=50?"#c98300":"#d23a3a";
-      html+=`<tr><td>${esc(lmap[it.lessonId]||it.lessonId)}</td><td style="font-weight:700">${it.score}/${it.total}</td><td style="color:${color};font-weight:700">${pct}%</td><td>${esc(when)}</td></tr>`; });
-    html+=`</table></div>`; });
-  cont.innerHTML=html; }
+
+function renderWrsLessons(){
+  const grid=$("wrs-lesson-grid"); grid.innerHTML="";
+  const lmap={}; wrsState.lessons.forEach(l=>lmap[l.id]=l);
+  // นับจำนวนนักเรียนที่ทำ ต่อบท
+  const count={}; wrsState.scores.forEach(s=>{ count[s.lessonId]=(count[s.lessonId]||0)+1; });
+  const lessonIds=Object.keys(count);
+  $("wrs-empty").style.display=lessonIds.length?"none":"block";
+  // เรียงตามลำดับบทเรียนถ้ามี
+  wrsState.lessons.filter(l=>count[l.id]).forEach(l=>{
+    const card=document.createElement("button"); card.className="lesson-card";
+    const cover=l.coverUrl
+      ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>📝</div>'">`
+      : `<div class="cover cover--empty">📝</div>`;
+    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">👧 ทำแล้ว ${count[l.id]} คน</div></div>`;
+    card.addEventListener("click",()=>openWrsLesson(l)); grid.appendChild(card); });
+}
+
+let wrsCurrentLesson=null;
+function openWrsLesson(lesson){ wrsCurrentLesson=lesson;
+  $("wrs-lessons-mode").style.display="none"; $("wrs-detail-mode").style.display="block";
+  $("wrs-lesson-title").textContent="📝 "+lesson.title;
+  const list=wrsState.scores.filter(s=>String(s.lessonId)===String(lesson.id));
+  const sel=$("wrs-student");
+  let opts=`<option value="">— เลือกนักเรียน —</option>`;
+  list.forEach(s=>{ const pct=s.total?Math.round(s.score/s.total*100):0;
+    opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)} — ${s.score}/${s.total} (${pct}%)</option>`; });
+  sel.innerHTML=opts; sel.value=""; $("wrs-detail").innerHTML="";
+  $("wrs-detail-mode").scrollIntoView({behavior:"smooth"});
+}
+$("wrs-back").addEventListener("click",()=>{ $("wrs-detail-mode").style.display="none"; $("wrs-lessons-mode").style.display="block"; });
+$("wrs-student").addEventListener("change",()=>{ const u=$("wrs-student").value;
+  if(!u){ $("wrs-detail").innerHTML=""; return; } renderWrsStudent(u); });
+
+function renderWrsStudent(username){
+  const rec=wrsState.scores.find(s=>String(s.lessonId)===String(wrsCurrentLesson.id) && String(s.username).trim()===String(username).trim());
+  const box=$("wrs-detail");
+  if(!rec){ box.innerHTML=`<p class="muted">ไม่พบข้อมูล</p>`; return; }
+  const pct=rec.total?Math.round(rec.score/rec.total*100):0;
+  const color=pct>=80?"#2e9e6b":pct>=50?"#c98300":"#d23a3a";
+  let when=""; try{ when=new Date(rec.createdAt).toLocaleString("th-TH"); }catch(_){}
+  let rows="";
+  (rec.detail||[]).forEach((d,i)=>{
+    const ansTxt = d.ans ? esc(d.ans) : "—";
+    const modeTxt = d.mode==="draw" ? "✏️ เขียน" : "⌨️ พิมพ์";
+    rows+=`<tr>
+      <td style="text-align:center">${i+1}</td>
+      <td style="font-weight:700">${esc(d.w)}</td>
+      <td>${ansTxt}</td>
+      <td style="text-align:center">${modeTxt}</td>
+      <td style="text-align:center;font-weight:700;color:${d.ok?'#2e9e6b':'#d23a3a'}">${d.ok?'✅ ถูก':'❌ ผิด'}</td>
+    </tr>`;
+  });
+  if(!(rec.detail||[]).length) rows=`<tr><td colspan="5" style="text-align:center;color:#6c7390">ไม่มีรายละเอียดรายข้อ (อาจทำก่อนอัปเดตระบบ)</td></tr>`;
+  box.innerHTML=`
+    <div class="report" style="box-shadow:none;padding:0;margin-top:10px;max-width:100%">
+      <p style="font-size:1.1rem;margin-bottom:10px">คะแนนรวม:
+        <b style="color:${color};font-size:1.3rem">${rec.score}/${rec.total} (${pct}%)</b>
+        <span class="muted" style="font-size:.9rem"> · ทำเมื่อ ${esc(when)}</span></p>
+      <table>
+        <tr><th style="width:44px">ข้อ</th><th>คำเฉลย</th><th>คำที่นักเรียนตอบ</th><th style="width:90px">วิธี</th><th style="width:90px">ผล</th></tr>
+        ${rows}
+      </table>
+      <p class="muted" style="font-size:.85rem;margin-top:8px">หมายเหตุ: ข้อที่เขียนด้วยมือ ระบบใช้ AI อ่านลายมือช่วยตรวจ อาจคลาดเคลื่อนได้บ้าง</p>
+    </div>`;
+}
 
 async function goBadges(){ if(state.user.role!=="student") return goLessons();
   show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
