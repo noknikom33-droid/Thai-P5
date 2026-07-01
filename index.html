@@ -280,6 +280,20 @@ textarea{resize:vertical;min-height:150px}
 .guide .gtip{background:#eef7ff;border:2px solid #cfe6ff;border-radius:14px;padding:12px 14px;margin-top:10px;color:#0f5e8a;line-height:1.6}
 /* recorder overlay */
 .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9996;background:rgba(40,49,73,.45);padding:18px}
+/* ทดสอบการเขียน */
+.wr-card{text-align:center}
+.wr-instruction{color:var(--ink-soft);margin-bottom:12px}
+.wr-listen{font-size:1.2rem;padding:14px 30px}
+.wr-mode-toggle{display:flex;gap:10px;justify-content:center;margin:18px 0 14px;flex-wrap:wrap}
+.wr-mode-btn{font-family:inherit;font-size:1rem;padding:10px 16px;border-radius:14px;background:#eef1fa;color:var(--ink);font-weight:700;border:2px solid transparent}
+.wr-mode-btn.active{background:var(--teal);color:#fff}
+.wr-input{width:100%;font-size:1.7rem;text-align:center;padding:14px;border:2px solid #e2e6f3;border-radius:16px;font-family:"Sarabun",sans-serif}
+.wr-canvas{width:100%;max-width:600px;height:auto;aspect-ratio:5/2;background:#fff;border:2px dashed #b9c4dd;border-radius:16px;touch-action:none;cursor:crosshair;display:block;margin:0 auto}
+.wr-canvas-tools{display:flex;gap:10px;justify-content:center;margin-top:10px}
+.wr-popup-box{text-align:center;max-width:380px}
+.wr-popup-icon{font-size:3.6rem;line-height:1}
+#wr-popup-title{margin:6px 0}
+#wr-popup-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}
 .rec-box{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:26px;width:100%;max-width:440px;text-align:center}
 .rec-box h3{color:var(--teal-dark);margin-bottom:6px}
 .rec-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
@@ -446,6 +460,63 @@ textarea{resize:vertical;min-height:150px}
     </div>
   </div>
 </section>
+
+<!-- หน้านักเรียน: ทดสอบการเขียน -->
+<section id="view-writing" class="view">
+  <div class="container">
+    <div id="wr-lessons-mode">
+      <h2 class="display" style="margin-bottom:6px">✍️ ทดสอบการเขียน</h2>
+      <p class="muted">เลือกบทเรียน ฟังเสียงคำแล้วเขียนหรือพิมพ์คำที่ได้ยินให้ถูกต้อง ระบบจะตรวจและบอกผลทันที</p>
+      <div id="wr-lesson-grid" class="lesson-grid"></div>
+      <div id="wr-lessons-empty" class="muted" style="display:none;text-align:center;padding:40px">ยังไม่มีบทเรียนให้ทดสอบ 🐣</div>
+    </div>
+    <div id="wr-quiz-mode" style="display:none">
+      <button class="mini" id="wr-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
+      <h2 class="display" id="wr-title"></h2>
+      <p class="progress-text" id="wr-progress">ข้อ 1 / 1</p>
+      <div class="card wr-card">
+        <p class="wr-instruction">กดลำโพงเพื่อฟังคำ แล้วเขียนคำที่ได้ยิน (กดฟังซ้ำได้)</p>
+        <button class="btn btn--sun wr-listen" id="wr-listen">🔊 ฟังเสียงคำ</button>
+        <div class="wr-mode-toggle">
+          <button class="wr-mode-btn active" data-m="type" id="wr-mode-type">⌨️ พิมพ์คำตอบ</button>
+          <button class="wr-mode-btn" data-m="draw" id="wr-mode-draw">✏️ เขียนด้วยมือ</button>
+        </div>
+        <div id="wr-type-area">
+          <input id="wr-input" type="text" class="wr-input" placeholder="พิมพ์คำที่ได้ยิน" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div id="wr-draw-area" style="display:none">
+          <canvas id="wr-canvas" class="wr-canvas" width="600" height="240"></canvas>
+          <div class="wr-canvas-tools">
+            <button class="mini" id="wr-undo">↩️ ย้อนกลับ</button>
+            <button class="mini mini--danger" id="wr-clear">🗑️ ลบทั้งหมด</button>
+          </div>
+          <p id="wr-ocr-status" class="muted" style="margin-top:8px;font-size:.9rem"></p>
+        </div>
+        <button class="btn wr-check" id="wr-check" style="margin-top:16px;width:100%">✅ ตรวจคำตอบ</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- หน้าครู: คะแนนการเขียน -->
+<section id="view-writing-scores" class="view">
+  <div class="container">
+    <h2 class="display" style="margin-bottom:8px">📝 คะแนนการเขียน</h2>
+    <p class="muted">คะแนนล่าสุดของนักเรียนแต่ละคนในแต่ละบท (ระบบตรวจอัตโนมัติ)</p>
+    <button class="mini" id="wrs-refresh" style="margin-bottom:10px">🔄 รีเฟรช</button>
+    <div id="wrs-table"></div>
+  </div>
+</section>
+
+<!-- ป็อบอัพผลการตรวจคำตอบ -->
+<div id="wr-popup" class="overlay">
+  <div class="rec-box wr-popup-box">
+    <div id="wr-popup-icon" class="wr-popup-icon">✅</div>
+    <h3 id="wr-popup-title">ถูกต้อง!</h3>
+    <p id="wr-popup-msg" class="muted"></p>
+    <div id="wr-popup-actions"></div>
+  </div>
+</div>
 
 <!-- หน้าครู: แดชบอร์ด (สถิติ + ความก้าวหน้า) -->
 <section id="view-dashboard" class="view">
@@ -832,6 +903,7 @@ const TEACHER_MENU = [
   { go:"students",   label:"🧒 เพิ่ม / จัดการนักเรียน" },
   { go:"admin",      label:"⚙️ จัดการบทเรียน" },
   { go:"recordings", label:"🎧 เสียงอ่านของนักเรียน" },
+  { go:"writing-scores", label:"📝 คะแนนการเขียน" },
   { go:"report",     label:"📄 รายงานนักเรียน" },
   { go:"settings",   label:"🛠️ การตั้งค่าทั่วไป" },
   { go:"guide",      label:"📖 คู่มือครู" },
@@ -840,6 +912,7 @@ const TEACHER_MENU = [
 const STUDENT_MENU = [
   { go:"lessons", label:"📚 บทเรียน" },
   { go:"test",    label:"🎤 ทดสอบการอ่าน" },
+  { go:"writing", label:"✍️ ทดสอบการเขียน" },
   { go:"badges",  label:"🏅 ตราสะสม" },
   { go:"help",    label:"❓ วิธีใช้งาน" },
   { go:"logout",  label:"🚪 ออกจากระบบ" }
@@ -876,6 +949,8 @@ function navTo(go){
     case "dashboard":  goDashboard();  break;
     case "lessons":    goLessons();    break;
     case "test":       goTest();       break;
+    case "writing":    goWriting();    break;
+    case "writing-scores": goWritingScores(); break;
     case "badges":     goBadges();     break;
     case "students":   goStudents();   break;
     case "admin":      goAdmin();      break;
@@ -1274,6 +1349,199 @@ $("test-submit").addEventListener("click",async()=>{
   }catch(err){ loading(false); toast("ส่งไม่สำเร็จ: "+err.message,"error"); } });
 
 /* ===== ตราสะสม (นักเรียน) — คำนวณจากความก้าวหน้า + ผลทดสอบ ===== */
+/* ===== ทดสอบการเขียน (นักเรียน) ===== */
+let wrState={lesson:null,words:[],idx:0,score:0,mode:"type",strokes:[]};
+
+async function goWriting(){ if(state.user.role!=="student") return goLessons();
+  show("view-writing");
+  $("wr-quiz-mode").style.display="none"; $("wr-lessons-mode").style.display="block";
+  loading(true,"กำลังโหลดบทเรียน...");
+  try{ const [lessons,mine]=await Promise.all([api("getLessons"),api("getMyWriting")]);
+    loading(false); renderWritingLessons(lessons,mine); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+
+function renderWritingLessons(lessons,mine){
+  const map={}; (mine||[]).forEach(w=>map[w.lessonId]=w);
+  const grid=$("wr-lesson-grid"); grid.innerHTML="";
+  $("wr-lessons-empty").style.display=lessons.length?"none":"block";
+  lessons.forEach(l=>{ const m=map[l.id];
+    const card=document.createElement("button"); card.className="lesson-card";
+    const cover=l.coverUrl
+      ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>✍️</div>'">`
+      : `<div class="cover cover--empty">✍️</div>`;
+    let meta="แตะเพื่อเริ่มทดสอบ";
+    if(m && m.total) meta=`<span class="meta-grade">📝 คะแนนล่าสุด: ${m.score}/${m.total}</span>`;
+    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
+    card.addEventListener("click",()=>openWritingLesson(l)); grid.appendChild(card); }); }
+
+function shuffleArr(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+async function openWritingLesson(lesson){
+  loading(true,"กำลังเปิดแบบทดสอบ...");
+  try{ const words=await api("getWords",{lessonId:lesson.id});
+    if(!words.length){ loading(false); return toast("บทนี้ยังไม่มีคำให้ทดสอบ","error"); }
+    wrState={lesson,words:shuffleArr(words.slice()),idx:0,score:0,mode:"type",strokes:[]};
+    try{ await preloadAudio(wrState.words); }catch(_){}
+    loading(false);
+    $("wr-lessons-mode").style.display="none"; $("wr-quiz-mode").style.display="block";
+    $("wr-title").textContent="✍️ "+lesson.title;
+    setWrMode("type"); renderWriteQuestion();
+    $("wr-quiz-mode").scrollIntoView({behavior:"smooth"});
+  }catch(err){ loading(false); toast(err.message,"error"); } }
+
+function renderWriteQuestion(){
+  const total=wrState.words.length, n=wrState.idx+1;
+  $("wr-progress").textContent=`ข้อ ${n} / ${total}`;
+  $("wr-input").value=""; wrState.strokes=[]; redrawWrCanvas();
+  playWrWord();
+  if(wrState.mode==="type") setTimeout(()=>$("wr-input").focus(),50); }
+
+function playWrWord(){ const w=wrState.words[wrState.idx]; if(w) speak(w.text,w.audioUrl); }
+
+function setWrMode(m){ wrState.mode=m;
+  $("wr-mode-type").classList.toggle("active",m==="type");
+  $("wr-mode-draw").classList.toggle("active",m==="draw");
+  $("wr-type-area").style.display=m==="type"?"block":"none";
+  $("wr-draw-area").style.display=m==="draw"?"block":"none"; }
+
+/* ----- วาดเขียนบน canvas ----- */
+let wrCanvasInit=false, wrDrawing=false;
+function initWrCanvas(){
+  if(wrCanvasInit) return; const c=$("wr-canvas"); if(!c) return; wrCanvasInit=true;
+  const pos=(e)=>{ const r=c.getBoundingClientRect();
+    return { x:(e.clientX-r.left)*(c.width/r.width), y:(e.clientY-r.top)*(c.height/r.height) }; };
+  c.addEventListener("pointerdown",(e)=>{ e.preventDefault(); wrDrawing=true; wrState.strokes=wrState.strokes||[];
+    wrState.strokes.push([pos(e)]); redrawWrCanvas(); });
+  c.addEventListener("pointermove",(e)=>{ if(!wrDrawing)return; e.preventDefault();
+    const s=wrState.strokes[wrState.strokes.length-1]; if(s){ s.push(pos(e)); redrawWrCanvas(); } });
+  window.addEventListener("pointerup",()=>{ wrDrawing=false; }); }
+function redrawWrCanvas(){ const c=$("wr-canvas"); if(!c) return; const ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height); ctx.lineWidth=6; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#28324a";
+  (wrState.strokes||[]).forEach(s=>{ if(!s.length)return; ctx.beginPath(); ctx.moveTo(s[0].x,s[0].y);
+    s.forEach(p=>ctx.lineTo(p.x,p.y)); if(s.length===1)ctx.lineTo(s[0].x+0.1,s[0].y+0.1); ctx.stroke(); }); }
+
+/* ----- ตัวอ่านลายมือ Tesseract.js (โหลดจาก CDN เฉพาะตอนใช้โหมดเขียนครั้งแรก) ----- */
+let tessWorker=null, tessReady=false, tessFailed=false, tessPrep=null;
+function loadScriptOnce(src){ return new Promise((res,rej)=>{
+  if(document.querySelector(`script[data-src="${src}"]`)){ res(); return; }
+  const s=document.createElement("script"); s.src=src; s.dataset.src=src;
+  s.onload=()=>res(); s.onerror=()=>rej(new Error("โหลดสคริปต์ไม่สำเร็จ")); document.head.appendChild(s); }); }
+function ensureTess(){
+  if(tessReady) return Promise.resolve();
+  if(tessPrep) return tessPrep;
+  tessPrep=(async()=>{
+    await loadScriptOnce("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
+    tessWorker=await Tesseract.createWorker("tha");
+    try{ await tessWorker.setParameters({ tessedit_pageseg_mode:"7" }); }catch(_){}
+    tessReady=true;
+  })();
+  return tessPrep;
+}
+function prewarmTess(){
+  const st=$("wr-ocr-status");
+  if(tessReady){ st.textContent="✓ ตัวอ่านลายมือพร้อมแล้ว"; return; }
+  st.textContent="⏳ กำลังเตรียมตัวอ่านลายมือ (ครั้งแรกอาจช้าสักครู่)...";
+  ensureTess().then(()=>{ st.textContent="✓ ตัวอ่านลายมือพร้อมแล้ว เขียนแล้วกดตรวจได้เลย"; })
+    .catch(()=>{ tessFailed=true; st.textContent="⚠️ เตรียมตัวอ่านไม่สำเร็จ จะใช้แบบเทียบเฉลยเองแทน"; }); }
+function canvasToImage(){ const c=$("wr-canvas"); const t=document.createElement("canvas");
+  t.width=c.width; t.height=c.height; const x=t.getContext("2d");
+  x.fillStyle="#fff"; x.fillRect(0,0,t.width,t.height); x.drawImage(c,0,0); return t.toDataURL("image/png"); }
+
+/* ----- ตรวจคำตอบ ----- */
+function normAns(s){ return String(s||"").replace(/\s+/g,"").trim(); }
+function selfCheckPopup(w){
+  showWrPopup({ icon:"📝", title:"เทียบกับเฉลย",
+    msg:`คำที่ถูกคือ <b style="font-size:1.7rem;color:var(--teal-dark)">${esc(w.text)}</b><br>หนูเขียนถูกไหม?`,
+    actions:[
+      {label:"✅ เขียนถูก",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(true); }},
+      {label:"❌ ยังไม่ถูก",cls:"btn btn--danger",onClick:()=>{ closeWrPopup(); recordResult(false); }}
+    ] }); }
+function resultPopup(correct,answer,extra){
+  showWrPopup({ icon:correct?"✅":"❌", title:correct?"ถูกต้อง!":"ยังไม่ถูก",
+    msg:(correct?"เก่งมาก! 🎉":`เฉลย: <b style="font-size:1.5rem;color:var(--teal-dark)">${esc(answer)}</b>`)+
+        (extra?`<br><span style="font-size:.9rem;color:#6c7390">${esc(extra)}</span>`:""),
+    actions:[{label:"ตกลง",cls:"btn",onClick:()=>{ closeWrPopup(); recordResult(correct); }}] }); }
+
+async function wrCheck(){
+  const w=wrState.words[wrState.idx]; if(!w) return;
+  if(wrState.mode==="type"){
+    const ans=$("wr-input").value;
+    if(!normAns(ans)) return toast("พิมพ์คำตอบก่อนนะ","error");
+    resultPopup(normAns(ans)===normAns(w.text), w.text);
+    return;
+  }
+  // โหมดเขียนด้วยมือ
+  if(!wrState.strokes || !wrState.strokes.length) return toast("เขียนคำตอบก่อนนะ","error");
+  if(tessFailed){ selfCheckPopup(w); return; }     // ตัวอ่านใช้ไม่ได้ -> ถอยไปเทียบเฉลยเอง
+  loading(true,"กำลังอ่านลายมือ...");
+  try{
+    await ensureTess();
+    const { data } = await tessWorker.recognize(canvasToImage());
+    loading(false);
+    const read=normAns((data&&data.text)||""); const target=normAns(w.text);
+    const correct = !!target && (read===target || read.indexOf(target)>=0);
+    resultPopup(correct, w.text, "AI อ่านได้ว่า: "+(((data&&data.text)||"").trim()||"—"));
+  }catch(e){ loading(false); tessFailed=true; toast("อ่านลายมือไม่สำเร็จ ใช้แบบเทียบเฉลยเองแทน","error"); selfCheckPopup(w); }
+}
+function recordResult(correct){ if(correct) wrState.score++; nextWriteQuestion(); }
+function nextWriteQuestion(){ wrState.idx++;
+  if(wrState.idx>=wrState.words.length){ finishWriting(); return; } renderWriteQuestion(); }
+
+async function finishWriting(){
+  const total=wrState.words.length, score=wrState.score, pct=total?Math.round(score/total*100):0;
+  try{ await api("submitWritingScore",{lessonId:wrState.lesson.id,score,total}); }catch(_){}
+  const emo=pct>=80?"🏆":pct>=50?"😀":"💪";
+  const word=pct>=80?"เยี่ยมมาก!":pct>=50?"เก่งขึ้นเยอะ!":"ฝึกอีกนิดนะ สู้ ๆ!";
+  showWrPopup({ icon:emo, title:"สรุปผลคะแนน",
+    msg:`หนูทำถูก <b style="font-size:1.7rem;color:var(--teal-dark)">${score} / ${total}</b> ข้อ (${pct}%)<br>${word}`,
+    actions:[{label:"เสร็จสิ้น",cls:"btn",onClick:()=>{ closeWrPopup(); $("wr-quiz-mode").style.display="none"; goWriting(); }}] });
+  if(pct>=80 && typeof celebrate==="function") celebrate();
+}
+
+/* ----- ป็อบอัพ ----- */
+function showWrPopup(opts){
+  $("wr-popup-icon").textContent=opts.icon||"";
+  $("wr-popup-title").textContent=opts.title||"";
+  $("wr-popup-msg").innerHTML=opts.msg||"";
+  const act=$("wr-popup-actions"); act.innerHTML="";
+  (opts.actions||[]).forEach(a=>{ const b=document.createElement("button"); b.className=a.cls||"btn";
+    b.textContent=a.label; b.onclick=a.onClick; act.appendChild(b); });
+  $("wr-popup").style.display="flex"; }
+function closeWrPopup(){ $("wr-popup").style.display="none"; }
+
+/* ----- ผูกปุ่ม ----- */
+$("wr-listen").addEventListener("click",playWrWord);
+$("wr-mode-type").addEventListener("click",()=>setWrMode("type"));
+$("wr-mode-draw").addEventListener("click",()=>{ setWrMode("draw"); initWrCanvas(); redrawWrCanvas(); prewarmTess(); });
+$("wr-check").addEventListener("click",wrCheck);
+$("wr-undo").addEventListener("click",()=>{ if(wrState.strokes&&wrState.strokes.length){ wrState.strokes.pop(); redrawWrCanvas(); } });
+$("wr-clear").addEventListener("click",()=>{ wrState.strokes=[]; redrawWrCanvas(); });
+$("wr-back").addEventListener("click",()=>{ $("wr-quiz-mode").style.display="none"; $("wr-lessons-mode").style.display="block"; });
+
+/* ===== คะแนนการเขียน (ครู) ===== */
+async function goWritingScores(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
+  show("view-writing-scores"); loading(true,"กำลังโหลดคะแนน...");
+  try{ const [scores,lessons]=await Promise.all([api("getWritingScores"),api("getLessons")]);
+    loading(false); renderWritingScores(scores,lessons); }
+  catch(err){ loading(false); toast(err.message,"error"); } }
+$("wrs-refresh").addEventListener("click",goWritingScores);
+function renderWritingScores(scores,lessons){
+  const cont=$("wrs-table");
+  if(!scores.length){ cont.innerHTML=`<p class="muted">ยังไม่มีนักเรียนทำแบบทดสอบการเขียน</p>`; return; }
+  const lmap={}; lessons.forEach(l=>lmap[l.id]=l.title);
+  const byUser={};
+  scores.forEach(s=>{ (byUser[s.username]=byUser[s.username]||{name:s.displayName||s.username,items:[]}).items.push(s); });
+  let html="";
+  Object.keys(byUser).forEach(u=>{ const g=byUser[u];
+    html+=`<div class="report" style="box-shadow:var(--shadow);padding:18px;margin-bottom:14px;max-width:100%">
+      <h3 class="display" style="margin-bottom:8px;color:var(--teal-dark)">👧 ${esc(g.name)}</h3>
+      <table><tr><th>บทเรียน</th><th>คะแนน</th><th>เปอร์เซ็นต์</th><th>เมื่อ</th></tr>`;
+    g.items.forEach(it=>{ const pct=it.total?Math.round(it.score/it.total*100):0; let when=""; try{when=new Date(it.createdAt).toLocaleString("th-TH");}catch(_){}
+      const color=pct>=80?"#2e9e6b":pct>=50?"#c98300":"#d23a3a";
+      html+=`<tr><td>${esc(lmap[it.lessonId]||it.lessonId)}</td><td style="font-weight:700">${it.score}/${it.total}</td><td style="color:${color};font-weight:700">${pct}%</td><td>${esc(when)}</td></tr>`; });
+    html+=`</table></div>`; });
+  cont.innerHTML=html; }
+
 async function goBadges(){ if(state.user.role!=="student") return goLessons();
   show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
   try{ const [progress,tests,config]=await Promise.all([
