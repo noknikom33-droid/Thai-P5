@@ -2144,10 +2144,18 @@ $("cp-save").addEventListener("click",async()=>{
 $("reset-term").addEventListener("click",async()=>{
   if(!confirm("เริ่มเทอมใหม่: ล้างความก้าวหน้า ผลทดสอบการอ่าน และเสียงอ่านของนักเรียนทุกคน ทุกบท?\nนักเรียนจะทำแบบทดสอบใหม่ได้ — การลบนี้ย้อนกลับไม่ได้")) return;
   if(!confirm("ยืนยันอีกครั้ง: ข้อมูลดาว/จำนวนคำที่อ่าน ผลทดสอบ และเสียงอ่านของนักเรียนทุกคนจะหายทั้งหมด ต้องการดำเนินการต่อหรือไม่?")) return;
-  loading(true,"กำลังล้างข้อมูลทั้งหมด...");
-  try{ await api("resetAllProgress"); loading(false);
-    toast("เริ่มเทอมใหม่เรียบร้อย ♻️","success"); }
-  catch(err){ loading(false); toast(err.message,"error"); } });
+  loading(true,"กำลังล้างข้อมูลและลบไฟล์เสียงออกจาก Drive...");
+  try{
+    let guard=0;
+    while(true){
+      const r=await api("resetAllProgress");
+      if(r && r.done) break;
+      if(++guard>1000) break;                        // กันวนไม่รู้จบ
+      loading(true,`กำลังลบไฟล์เสียงออกจาก Drive... เหลืออีก ${(r&&r.remaining)||0} ไฟล์`);
+    }
+    loading(false);
+    toast("เริ่มเทอมใหม่เรียบร้อย ลบไฟล์เสียงออกจาก Drive แล้ว ♻️","success"); }
+  catch(err){ loading(false); toast("ล้างไม่สำเร็จ: "+err.message+" — ลองกดล้างอีกครั้งเพื่อลบส่วนที่เหลือได้","error"); } });
 
 /* ===== หน้าครู: จัดการบทเรียนและคำ ===== */
 async function goAdmin(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
