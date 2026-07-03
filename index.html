@@ -807,20 +807,38 @@ let adminLessonId = null, pendingCoverUrl = "";
 let dashState = null;
 
 /* เรียก API ผ่าน POST แบบ text/plain เพื่อเลี่ยงปัญหา CORS */
-async function api(action, params = {}) {
-  const res = await fetch(API_URL, { method: "POST",
-    body: JSON.stringify(Object.assign({ action, token: state.token }, params)) });
-  const data = await res.json();
-  if (!data.ok) {
-    if (data.error && (data.error.indexOf("เข้าสู่ระบบ") >= 0 || data.error.indexOf("ไม่พบบัญชี") >= 0)) {
+async function api(action, params = {}, _attempt = 0) {
+  const RETRIES = 3;                 // ลองใหม่อัตโนมัติเมื่อพลาดชั่วคราว (เน็ตสะดุด/เซิร์ฟเวอร์คนเยอะ)
+  let res, data;
+  try{
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), 45000);   // กันค้าง 45 วิ
+    res = await fetch(API_URL, { method:"POST", signal:ctrl.signal,
+      body: JSON.stringify(Object.assign({ action, token: state.token }, params)) });
+    clearTimeout(timer);
+    data = await res.json();
+  }catch(err){
+    // เน็ต/เซิร์ฟเวอร์มีปัญหาชั่วคราว -> ลองใหม่
+    if (_attempt < RETRIES){ await sleep(600*(_attempt+1)); return api(action, params, _attempt+1); }
+    throw new Error("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้งนะ (เน็ตอาจไม่เสถียร)");
+  }
+  if (!data || !data.ok) {
+    const emsg = (data && data.error) || "";
+    if (emsg && (emsg.indexOf("เข้าสู่ระบบ") >= 0 || emsg.indexOf("ไม่พบบัญชี") >= 0)) {
       localStorage.removeItem("session"); state = { user: null, token: null };
       $("appbar").style.display = "none"; show("view-login");
       if (typeof resetLoginUI === "function") resetLoginUI();
+      throw new Error(emsg);
     }
-    throw new Error(data.error || "เกิดข้อผิดพลาด");
+    // งานเขียนพลาดเพราะคนใช้พร้อมกันเยอะ -> ลองใหม่อัตโนมัติ
+    if (_attempt < RETRIES && (emsg.indexOf("พร้อมกัน") >= 0 || emsg.indexOf("ลองอีกครั้ง") >= 0 || emsg.indexOf("lock") >= 0 || emsg.indexOf("Lock") >= 0)){
+      await sleep(800*(_attempt+1)); return api(action, params, _attempt+1);
+    }
+    throw new Error(emsg || "เกิดข้อผิดพลาด กรุณาลองใหม่");
   }
   return data.data;
 }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 /* ตัวช่วยหน้าจอ */
 const $ = (id) => document.getElementById(id);
@@ -1140,13 +1158,13 @@ let currentWords=[], readSet=new Set(), currentLessonId=null;
 async function preloadAudio(words){
   const list=words.filter(w=>w.audioUrl);
   if(!list.length) return;
-  let done=0;
-  loading(true,`กรุณารอสักครู่ กำลังโหลดบทเรียน... (0/${list.length})`);
-  await Promise.all(list.map(w=>
-    resolveAudioSrc(w.audioUrl).catch(()=>null).then(()=>{
-      done++; loading(true,`กรุณารอสักครู่ กำลังโหลดบทเรียน... (${done}/${list.length})`);
-    })
-  ));
+  let done=0; const total=list.length;
+  loading(true,`กรุณารอสักครู่ กำลังโหลดบทเรียน... (0/${total})`);
+  const queue=list.slice(), CONC=2;                 // โหลดทีละ 2 (กันยิงพร้อมกันเยอะจนเซิร์ฟเวอร์รับไม่ไหว)
+  async function worker(){ while(queue.length){ const w=queue.shift();
+    try{ await resolveAudioSrc(w.audioUrl); }catch(_){}
+    done++; loading(true,`กรุณารอสักครู่ กำลังโหลดบทเรียน... (${done}/${total})`); } }
+  await Promise.all(Array.from({length:Math.min(CONC,total)},()=>worker()));
 }
 
 async function openLesson(lesson){ currentLessonId=lesson.id;
@@ -1393,7 +1411,7 @@ async function openWritingLesson(lesson){
   try{ const words=await api("getWords",{lessonId:lesson.id});
     if(!words.length){ loading(false); return toast("บทนี้ยังไม่มีคำให้ทดสอบ","error"); }
     wrState={lesson,words:shuffleArr(words.slice()),idx:0,score:0,mode:"type",strokes:[],results:[]};
-    try{ await preloadAudio(wrState.words); }catch(_){}
+    // ไม่โหลดเสียงรวดเดียว — จะโหลดทีละข้อตอนเล่น (เบากว่าเมื่อเด็กเข้าพร้อมกันหลายคน)
     loading(false);
     $("wr-lessons-mode").style.display="none"; $("wr-quiz-mode").style.display="block";
     $("wr-title").textContent="✍️ "+lesson.title;
@@ -2270,6 +2288,14 @@ $("rec-file").addEventListener("change",(e)=>{ const file=e.target.files[0]; if(
 $("rec-start").addEventListener("click",async()=>{
   const sup=recordingSupport();
   if(!sup.ok){ toast("เครื่องนี้อัดเสียงไม่ได้ ลองเปิดด้วย Chrome/Safari หรือเลือกไฟล์เสียงจากเครื่องแทน","error"); return; }
+  // กันอัดซ้ำ: ถ้าคำนี้อัดไว้แล้ว ถามก่อนว่าจะลบเสียงเก่าแล้วอัดใหม่ไหม
+  if(rec.mode==="test" && rec.word && testBlobs[rec.word.id]){
+    if(!confirm("คำนี้อัดเสียงไว้แล้ว\nต้องการลบเสียงเก่าแล้วอัดใหม่ไหม?")) return;
+    delete testBlobs[rec.word.id]; rec.blob=null;
+    const a=$("rec-audio"); a.src=""; a.style.display="none"; $("rec-save").style.display="none";
+    renderTestWords();
+    $("rec-status").textContent="ลบเสียงเก่าแล้ว กด 🎙️ เริ่มอัดใหม่ได้เลย";
+  }
   try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const mime=pickAudioMime();
     const mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
     rec.mr=mr; rec.chunks=[]; rec.stream=stream; rec.blob=null;
