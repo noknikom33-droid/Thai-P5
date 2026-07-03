@@ -2317,8 +2317,17 @@ $("rec-start").addEventListener("click",async()=>{
     renderTestWords();
     $("rec-status").textContent="ลบเสียงเก่าแล้ว กด 🎙️ เริ่มอัดใหม่ได้เลย";
   }
-  try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); const mime=pickAudioMime();
-    const mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+  try{
+    // ขอไมค์แบบโมโน (เสียงพูดไม่ต้องสเตอริโอ) — ถ้าเครื่องไม่รับ ค่อยถอยเป็นค่าปกติ
+    let stream;
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}}); }
+    catch(_){ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+    const mime=pickAudioMime();
+    // บิตเรตต่ำสำหรับเสียงพูด ~32kbps -> ไฟล์เล็กลงมาก อัปเร็วขึ้น ทนเน็ตอ่อนได้ดีขึ้น
+    const opts=Object.assign({audioBitsPerSecond:32000}, mime?{mimeType:mime}:{});
+    let mr;
+    try{ mr=new MediaRecorder(stream,opts); }
+    catch(_){ try{ mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(__){ mr=new MediaRecorder(stream); } }
     rec.mr=mr; rec.chunks=[]; rec.stream=stream; rec.blob=null;
     mr.ondataavailable=e=>{ if(e.data&&e.data.size)rec.chunks.push(e.data); };
     mr.onstop=()=>{ rec.blob=new Blob(rec.chunks,{type:mr.mimeType||mime||"audio/webm"});
