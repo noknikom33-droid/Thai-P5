@@ -609,6 +609,25 @@ textarea{resize:vertical;min-height:150px}
   </div>
 </section>
 
+<!-- หน้าอัปเดตแอป (ใช้ร่วมกันครู/นักเรียน) -->
+<section id="view-update" class="view">
+  <div class="container" style="max-width:520px">
+    <h2 class="display" style="margin-bottom:6px">🔄 อัปเดตแอป</h2>
+    <div class="card" style="text-align:center;margin-top:16px">
+      <div style="font-size:3rem;line-height:1">📱</div>
+      <p style="font-size:1.15rem;margin:10px 0 2px">เวอร์ชันของคุณตอนนี้</p>
+      <div id="upd-version" style="font-family:'Baloo Thai 2',cursive;font-weight:800;font-size:2rem;color:var(--teal-dark)">—</div>
+      <p id="upd-status" class="muted" style="margin:10px 0 18px;min-height:1.4em">กำลังตรวจสอบ...</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn" id="upd-check">🔍 ตรวจหาอัปเดต</button>
+        <button class="btn btn--sun" id="upd-now" style="display:none">⬇️ อัปเดตเป็นเวอร์ชันใหม่เลย</button>
+        <button class="link-btn" id="upd-force">🧹 ยังไม่อัปเดต? กดบังคับอัปเดต (ล้างแคช)</button>
+      </div>
+      <p class="muted" style="font-size:.85rem;margin-top:14px;line-height:1.6">ถ้ากดตรวจแล้วขึ้นว่าใช้เวอร์ชันล่าสุด แปลว่าเครื่องนี้อัปเดตแล้ว · ถ้ายังค้างเวอร์ชันเก่า ให้กด "บังคับอัปเดต"</p>
+    </div>
+  </div>
+</section>
+
 <!-- หน้าครู: คู่มือการใช้งาน -->
 <section id="view-guide" class="view">
   <div class="container guide">
@@ -970,6 +989,7 @@ const TEACHER_MENU = [
   { go:"report",     label:"📄 รายงานนักเรียน" },
   { go:"settings",   label:"🛠️ การตั้งค่าทั่วไป" },
   { go:"guide",      label:"📖 คู่มือครู" },
+  { go:"update",     label:"🔄 อัปเดตแอป" },
   { go:"logout",     label:"🚪 ออกจากระบบ" }
 ];
 const STUDENT_MENU = [
@@ -978,6 +998,7 @@ const STUDENT_MENU = [
   { go:"writing", label:"✍️ ทดสอบการเขียน" },
   { go:"badges",  label:"🏅 ตราสะสม" },
   { go:"help",    label:"❓ วิธีใช้งาน" },
+  { go:"update",  label:"🔄 อัปเดตแอป" },
   { go:"logout",  label:"🚪 ออกจากระบบ" }
 ];
 let menuOpen = false;
@@ -1021,6 +1042,7 @@ function navTo(go){
     case "report":     goReport();     break;
     case "help":       goHelp();       break;
     case "guide":      goGuide();      break;
+    case "update":     goUpdate();     break;
     case "settings":   goSettings();   break;
     case "install":    installApp();   return;
     case "logout":     doLogout();     return;
@@ -2098,6 +2120,73 @@ function renderReport(username){
     </div>`;
 }
 
+/* ===== หน้าอัปเดตแอป ===== */
+const APP_VERSION = "v5";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+function versionLabel(raw){ if(!raw) return APP_VERSION;
+  const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
+function getSWVersion(){ return new Promise(res=>{
+  if(!("serviceWorker" in navigator) || !navigator.serviceWorker.controller){ res(null); return; }
+  let done=false; const ch=new MessageChannel();
+  ch.port1.onmessage=(e)=>{ if(done)return; done=true; res(e.data && e.data.version); };
+  try{ navigator.serviceWorker.controller.postMessage({type:"GET_VERSION"},[ch.port2]); }catch(_){ res(null); }
+  setTimeout(()=>{ if(!done){ done=true; res(null); } },1500);
+}); }
+
+async function goUpdate(){
+  show("view-update");
+  $("upd-now").style.display="none";
+  const raw=await getSWVersion();
+  $("upd-version").textContent=versionLabel(raw);
+  checkForUpdate();
+}
+async function checkForUpdate(){
+  const st=$("upd-status");
+  if(!("serviceWorker" in navigator)){ st.textContent="เบราว์เซอร์นี้ไม่รองรับระบบอัปเดตอัตโนมัติ"; return; }
+  st.textContent="⏳ กำลังตรวจหาอัปเดต...";
+  $("upd-check").disabled=true;
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    if(!reg){ st.textContent="ยังไม่ได้ติดตั้งระบบอัปเดต (ลองรีเฟรชหน้าหนึ่งครั้ง)"; $("upd-check").disabled=false; return; }
+    try{ await reg.update(); }catch(_){}
+    // รอให้ตัวใหม่ (ถ้ามี) ติดตั้งเสร็จ
+    let waited=0;
+    while(waited<6000){
+      if(reg.waiting){ break; }
+      if(reg.installing){ st.textContent="⬇️ กำลังดาวน์โหลดเวอร์ชันใหม่..."; }
+      await sleep(500); waited+=500;
+    }
+    if(reg.waiting){
+      st.innerHTML="🎉 <b>มีเวอร์ชันใหม่!</b> กดปุ่มด้านล่างเพื่ออัปเดต";
+      $("upd-now").style.display="inline-flex";
+    }else{
+      st.textContent="✅ คุณใช้เวอร์ชันล่าสุดอยู่แล้ว";
+      $("upd-now").style.display="none";
+    }
+  }catch(e){ st.textContent="ตรวจหาอัปเดตไม่สำเร็จ ลองใหม่อีกครั้ง"; }
+  $("upd-check").disabled=false;
+}
+async function forceUpdate(){
+  const st=$("upd-status"); st.textContent="🧹 กำลังล้างแคชและดึงเวอร์ชันล่าสุด...";
+  try{
+    if(window.caches){ const keys=await caches.keys(); await Promise.all(keys.map(k=>caches.delete(k))); }
+    if("serviceWorker" in navigator){ const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister())); }
+  }catch(_){}
+  setTimeout(()=>location.reload(), 400);   // โหลดใหม่ -> ดึง index.html + sw.js ตัวล่าสุดจากเน็ต
+}
+(function(){ 
+  const c=$("upd-check"); if(c) c.addEventListener("click",checkForUpdate);
+  const n=$("upd-now"); if(n) n.addEventListener("click",()=>{
+    __updateAccepted=true;
+    if(__swReg && __swReg.waiting){ __swReg.waiting.postMessage({type:"SKIP_WAITING"}); }
+    $("upd-status").textContent="กำลังอัปเดต... แอปจะรีเฟรชเอง";
+    setTimeout(()=>{ if(!__swRefreshing){ __swRefreshing=true; location.reload(); } }, 1800);
+  });
+  const f=$("upd-force"); if(f) f.addEventListener("click",()=>{
+    if(confirm("บังคับอัปเดตและล้างแคช?\nแอปจะโหลดใหม่เป็นเวอร์ชันล่าสุด")) forceUpdate();
+  });
+})();
+
 /* ===== คู่มือการใช้งาน ===== */
 function goHelp(){ show("view-help"); }
 function goGuide(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error"); show("view-guide"); }
@@ -2399,7 +2488,10 @@ function closeRec(){ if(rec.stream)rec.stream.getTracks().forEach(t=>t.stop());
   $("rec-overlay").style.display="none"; const a=$("rec-audio"); a.pause(); a.src=""; }
 
 /* ===== เริ่มต้นแอป ===== */
-(function init(){ const saved=localStorage.getItem("session");
+(function init(){
+  // วอร์มอัพเซิร์ฟเวอร์เบา ๆ ทันทีที่เปิดแอป (กัน cold start ตอนกดใช้งานจริง)
+  try{ fetch(API_URL,{method:"POST",body:JSON.stringify({action:"ping"})}).catch(()=>{}); }catch(_){}
+  const saved=localStorage.getItem("session");
   if(saved){ try{ state=JSON.parse(saved);
     if(state.token&&state.user){ setSession(state.user,state.token); routeHome(); return; } }catch(_){} }
   show("view-login"); resetLoginUI(); maybeShowInstall(); })();
