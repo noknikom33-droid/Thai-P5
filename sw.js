@@ -3,13 +3,18 @@
    หมายเหตุ: การเรียก API (Google Apps Script) เป็น POST จะไม่ถูกแคช
             เพราะข้อมูลต้องสด ๆ — ออฟไลน์จะเปิดแอปได้ แต่ข้อมูลสดต้องมีเน็ต
    วิธีใช้: วางไฟล์นี้ไว้โฟลเดอร์เดียวกับ index.html ในรีโป GitHub
-   อยากอัปเดตแคชเวอร์ชันใหม่: เปลี่ยนเลข CACHE ด้านล่าง */
-const CACHE = 'arnsanook-p5-v2';
+   อยากอัปเดตแคชเวอร์ชันใหม่: เปลี่ยนเลข CACHE ด้านล่าง (เช่น v3 -> v4) */
+const CACHE = 'arnsanook-p5-v3';
 const SHELL = ['./', './index.html'];
 
 self.addEventListener('install', (e) => {
+  // ไม่ skipWaiting อัตโนมัติ — ให้ตัวใหม่ "รอ" จนกว่าผู้ใช้จะกด "แตะเพื่ออัปเดต"
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
-  self.skipWaiting();
+});
+
+// เมื่อผู้ใช้กดอัปเดต หน้าเว็บจะส่งข้อความมาบอกให้ข้ามการรอ แล้วรีเฟรชเป็นตัวใหม่
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
