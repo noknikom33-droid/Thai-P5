@@ -4,7 +4,7 @@
             เพราะข้อมูลต้องสด ๆ — ออฟไลน์จะเปิดแอปได้ แต่ข้อมูลสดต้องมีเน็ต
    วิธีใช้: วางไฟล์นี้ไว้โฟลเดอร์เดียวกับ index.html ในรีโป GitHub
    อยากอัปเดตแคชเวอร์ชันใหม่: เปลี่ยนเลข CACHE ด้านล่าง (เช่น v3 -> v4) */
-const CACHE = 'arnsanook-p5-v6';
+const CACHE = 'arnsanook-p5-v5';
 const SHELL = ['./', './index.html'];
 
 self.addEventListener('install', (e) => {
@@ -15,6 +15,9 @@ self.addEventListener('install', (e) => {
 // เมื่อผู้ใช้กดอัปเดต หน้าเว็บจะส่งข้อความมาบอกให้ข้ามการรอ แล้วรีเฟรชเป็นตัวใหม่
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (e.data && e.data.type === 'GET_VERSION' && e.ports && e.ports[0]) {
+    e.ports[0].postMessage({ version: CACHE });
+  }
 });
 
 self.addEventListener('activate', (e) => {
