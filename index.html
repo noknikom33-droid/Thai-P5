@@ -2116,17 +2116,21 @@ function renderReport(username,data){
   const lessons=reportState.lessons;
   const prog={}; (data.progress||[]).forEach(p=>prog[p.lessonId]=p);
   const tests={}; (data.tests||[]).forEach(t=>tests[t.lessonId]=t);
+  const writing={}; (data.writing||[]).forEach(w=>writing[w.lessonId]=w);
   const badges=computeBadges(Object.values(prog),Object.values(tests),reportState.badges).filter(b=>b.got);
 
   let rows="";
-  lessons.forEach(l=>{ const p=prog[l.id], t=tests[l.id];
+  lessons.forEach(l=>{ const p=prog[l.id], t=tests[l.id], w=writing[l.id];
     const readTxt=(p&&Number(p.totalCount))?`${p.readCount}/${p.totalCount} คำ`:"ยังไม่ได้อ่าน";
     let gradeTxt="—", color="";
     if(t){ if(t.status==="graded"&&t.grade){ gradeTxt=t.grade; color=gradeHex(t.grade); } else gradeTxt="ส่งแล้ว (รอประเมิน)"; }
+    let writeTxt="—", wcolor="";
+    if(w && Number(w.total)>0){ const pct=Math.round(w.score/w.total*100);
+      writeTxt=`${w.score}/${w.total} (${pct}%)`; wcolor=pct>=80?"#2e9e6b":pct>=50?"#c98300":"#d23a3a"; }
     const comment=(t&&t.comment)?esc(t.comment):"—";
-    rows+=`<tr><td>${esc(l.title)}</td><td>${esc(readTxt)}</td><td class="rgrade" style="color:${color}">${esc(gradeTxt)}</td><td>${comment}</td></tr>`;
+    rows+=`<tr><td>${esc(l.title)}</td><td>${esc(readTxt)}</td><td class="rgrade" style="color:${color}">${esc(gradeTxt)}</td><td class="rgrade" style="color:${wcolor}">${esc(writeTxt)}</td><td>${comment}</td></tr>`;
   });
-  if(!lessons.length) rows=`<tr><td colspan="4" style="text-align:center;color:#6c7390">ยังไม่มีบทเรียน</td></tr>`;
+  if(!lessons.length) rows=`<tr><td colspan="5" style="text-align:center;color:#6c7390">ยังไม่มีบทเรียน</td></tr>`;
 
   const badgeHtml = badges.length
     ? `<div class="rbadges">`+badges.map(b=>`<span class="rbadge">${b.ic} ${esc(b.nm)}</span>`).join("")+`</div>`
@@ -2150,7 +2154,7 @@ function renderReport(username,data){
       <div class="rmeta"><div><b>ชื่อนักเรียน:</b> ${esc(s.displayName||s.username)}</div>
         <div><b>วันที่ออกรายงาน:</b> ${esc(when)}</div></div>
       <table>
-        <tr><th>บทเรียน</th><th>อ่านแล้ว</th><th>ผลทดสอบ</th><th>คำแนะนำจากคุณครู</th></tr>
+        <tr><th>บทเรียน</th><th>อ่านแล้ว</th><th>ผลทดสอบการอ่าน</th><th>คะแนนการเขียน</th><th>คำแนะนำจากคุณครู</th></tr>
         ${rows}
       </table>
       <h3 class="display" style="margin:18px 0 6px;color:var(--teal-dark)">🚩 คำที่ควรฝึกเพิ่ม</h3>
@@ -2165,7 +2169,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v9";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v10";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
