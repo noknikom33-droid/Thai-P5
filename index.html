@@ -109,7 +109,9 @@ img{display:block;max-width:100%}
 /* หน้าบทเรียน (การ์ดรูปปกแนวนอน) */
 .greeting{font-size:1.5rem;margin-bottom:4px}
 .lesson-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:18px}
-.lesson-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;text-align:left;padding:0;transition:transform .15s,box-shadow .15s}
+.lesson-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;text-align:left;padding:0;transition:transform .15s,box-shadow .15s;position:relative}
+.lesson-card.locked{opacity:.62;filter:grayscale(.4)}
+.lesson-card .lock-badge{position:absolute;top:8px;right:8px;background:rgba(40,49,73,.85);color:#fff;border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;z-index:2}
 .lesson-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h)}
 .lesson-card:active{transform:scale(.99)}
 .cover{width:100%;aspect-ratio:16/9;object-fit:cover;background:#dfe7f5}
@@ -1312,24 +1314,32 @@ let testState={lessons:[],myTests:[]}, testCurrentLesson=null, testWords=[], tes
 async function goTest(){ show("view-test");
   $("test-lessons-mode").style.display="block"; $("test-detail-mode").style.display="none";
   loading(true,"กำลังโหลดแบบทดสอบ...");
-  try{ const [lessons,myTests]=await Promise.all([api("getLessons"),api("getMyTests")]);
-    testState={lessons,myTests}; loading(false); renderTestLessons(); }
+  try{ const [lessons,myTests,progress]=await Promise.all([
+      api("getLessons"),api("getMyTests"),api("getMyProgress")]);
+    testState={lessons,myTests,progress}; loading(false); renderTestLessons(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 function renderTestLessons(){
   const tmap={}; (testState.myTests||[]).forEach(t=>tmap[t.lessonId]=t);
+  const pmap={}; (testState.progress||[]).forEach(p=>pmap[p.lessonId]=p);
   const grid=$("test-lesson-grid"); grid.innerHTML="";
   $("test-lessons-empty").style.display=testState.lessons.length?"none":"block";
-  testState.lessons.forEach(l=>{ const t=tmap[l.id];
-    const card=document.createElement("button"); card.className="lesson-card";
+  testState.lessons.forEach(l=>{ const t=tmap[l.id]; const p=pmap[l.id];
+    const fullyRead = p && Number(p.totalCount)>0 && Number(p.readCount)>=Number(p.totalCount);
+    const doneTest = t && (t.status==="submitted"||t.status==="graded");
+    const locked = !fullyRead && !doneTest;   // ทำทดสอบไปแล้วไม่ต้องล็อก (ดูผลได้)
+    const card=document.createElement("button"); card.className="lesson-card"+(locked?" locked":"");
     const cover=l.coverUrl
       ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>🎤</div>'">`
       : `<div class="cover cover--empty">🎤</div>`;
     let meta="แตะเพื่อเริ่มทดสอบ";
     if(t && t.status==="graded" && t.grade) meta=`<span class="meta-grade">🌟 ผลการประเมิน: ${esc(t.grade)}</span>`;
     else if(t && t.status) meta="📨 ส่งแล้ว · รอคุณครูประเมิน";
-    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
-    card.addEventListener("click",()=>openTestLesson(l)); grid.appendChild(card); }); }
+    else if(locked) meta="🔒 อ่านฟังให้ครบทุกคำก่อน";
+    const lockBadge=locked?`<span class="lock-badge">🔒</span>`:"";
+    card.innerHTML=`${cover}${lockBadge}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
+    card.addEventListener("click",()=>{ if(locked){ toast("อ่านฟังให้ครบทุกคำในบทนี้ก่อนนะ 📖 ไปที่เมนู \"บทเรียน\" แล้วแตะ 🔊 ทุกคำ","error"); return; } openTestLesson(l); });
+    grid.appendChild(card); }); }
 
 async function openTestLesson(lesson){ testCurrentLesson=lesson;
   $("test-lessons-mode").style.display="none"; $("test-detail-mode").style.display="block";
@@ -1448,23 +1458,30 @@ async function goWriting(){ if(state.user.role!=="student") return goLessons();
   show("view-writing");
   $("wr-quiz-mode").style.display="none"; $("wr-lessons-mode").style.display="block";
   loading(true,"กำลังโหลดบทเรียน...");
-  try{ const [lessons,mine]=await Promise.all([api("getLessons"),api("getMyWriting")]);
-    loading(false); renderWritingLessons(lessons,mine); }
+  try{ const [lessons,mine,myTests]=await Promise.all([
+      api("getLessons"),api("getMyWriting"),api("getMyTests")]);
+    loading(false); renderWritingLessons(lessons,mine,myTests); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
-function renderWritingLessons(lessons,mine){
+function renderWritingLessons(lessons,mine,myTests){
   const map={}; (mine||[]).forEach(w=>map[w.lessonId]=w);
+  const tmap={}; (myTests||[]).forEach(t=>tmap[t.lessonId]=t);
   const grid=$("wr-lesson-grid"); grid.innerHTML="";
   $("wr-lessons-empty").style.display=lessons.length?"none":"block";
-  lessons.forEach(l=>{ const m=map[l.id];
-    const card=document.createElement("button"); card.className="lesson-card";
+  lessons.forEach(l=>{ const m=map[l.id]; const t=tmap[l.id];
+    const doneReadTest = t && (t.status==="submitted"||t.status==="graded");
+    const locked = !doneReadTest;
+    const card=document.createElement("button"); card.className="lesson-card"+(locked?" locked":"");
     const cover=l.coverUrl
       ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>✍️</div>'">`
       : `<div class="cover cover--empty">✍️</div>`;
     let meta="แตะเพื่อเริ่มทดสอบ";
     if(m && m.total) meta=`<span class="meta-grade">📝 คะแนนล่าสุด: ${m.score}/${m.total}</span>`;
-    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
-    card.addEventListener("click",()=>openWritingLesson(l)); grid.appendChild(card); }); }
+    else if(locked) meta="🔒 ทำทดสอบการอ่านบทนี้ก่อน";
+    const lockBadge=locked?`<span class="lock-badge">🔒</span>`:"";
+    card.innerHTML=`${cover}${lockBadge}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
+    card.addEventListener("click",()=>{ if(locked){ toast("ต้องทำ \"ทดสอบการอ่าน\" บทนี้ให้เสร็จก่อนนะ 🎤","error"); return; } openWritingLesson(l); });
+    grid.appendChild(card); }); }
 
 function shuffleArr(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
@@ -1652,24 +1669,21 @@ $("wr-clear").addEventListener("click",()=>{ wrState.strokes=[]; redrawWrCanvas(
 $("wr-back").addEventListener("click",()=>{ $("wr-quiz-mode").style.display="none"; $("wr-lessons-mode").style.display="block"; });
 
 /* ===== คะแนนการเขียน (ครู) — เลือกบท -> เลือกนักเรียน -> รายข้อ ===== */
-let wrsState={scores:[],lessons:[]};
+let wrsState={summary:[],lessons:[]};
 async function goWritingScores(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
   show("view-writing-scores");
   $("wrs-detail-mode").style.display="none"; $("wrs-lessons-mode").style.display="block";
-  loading(true,"กำลังโหลดคะแนน...");
-  try{ const [scores,lessons]=await Promise.all([api("getWritingScores"),api("getLessons")]);
-    wrsState={scores:scores||[],lessons:lessons||[]}; loading(false); renderWrsLessons(); }
+  loading(true,"กำลังโหลดรายการบท...");
+  try{ const [summary,lessons]=await Promise.all([api("getWritingSummary"),api("getLessons")]);
+    wrsState={summary:summary||[],lessons:lessons||[]}; loading(false); renderWrsLessons(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 $("wrs-refresh").addEventListener("click",goWritingScores);
 
 function renderWrsLessons(){
   const grid=$("wrs-lesson-grid"); grid.innerHTML="";
-  const lmap={}; wrsState.lessons.forEach(l=>lmap[l.id]=l);
-  // นับจำนวนนักเรียนที่ทำ ต่อบท
-  const count={}; wrsState.scores.forEach(s=>{ count[s.lessonId]=(count[s.lessonId]||0)+1; });
+  const count={}; wrsState.summary.forEach(s=>{ count[s.lessonId]=(count[s.lessonId]||0)+1; });
   const lessonIds=Object.keys(count);
   $("wrs-empty").style.display=lessonIds.length?"none":"block";
-  // เรียงตามลำดับบทเรียนถ้ามี
   wrsState.lessons.filter(l=>count[l.id]).forEach(l=>{
     const card=document.createElement("button"); card.className="lesson-card";
     const cover=l.coverUrl
@@ -1683,20 +1697,24 @@ let wrsCurrentLesson=null;
 function openWrsLesson(lesson){ wrsCurrentLesson=lesson;
   $("wrs-lessons-mode").style.display="none"; $("wrs-detail-mode").style.display="block";
   $("wrs-lesson-title").textContent="📝 "+lesson.title;
-  const list=wrsState.scores.filter(s=>String(s.lessonId)===String(lesson.id));
+  const list=wrsState.summary.filter(s=>String(s.lessonId)===String(lesson.id));
   const sel=$("wrs-student");
   let opts=`<option value="">— เลือกนักเรียน —</option>`;
   list.forEach(s=>{ const pct=s.total?Math.round(s.score/s.total*100):0;
     opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)} — ${s.score}/${s.total} (${pct}%)</option>`; });
-  sel.innerHTML=opts; sel.value=""; $("wrs-detail").innerHTML="";
+  sel.innerHTML=opts; sel.value=""; $("wrs-detail").innerHTML=`<p class="muted" style="text-align:center;padding:20px">⬆️ เลือกชื่อนักเรียนเพื่อดูผลรายข้อ</p>`;
   $("wrs-detail-mode").scrollIntoView({behavior:"smooth"});
 }
 $("wrs-back").addEventListener("click",()=>{ $("wrs-detail-mode").style.display="none"; $("wrs-lessons-mode").style.display="block"; });
-$("wrs-student").addEventListener("change",()=>{ const u=$("wrs-student").value;
-  if(!u){ $("wrs-detail").innerHTML=""; return; } renderWrsStudent(u); });
+$("wrs-student").addEventListener("change",async()=>{ const u=$("wrs-student").value;
+  if(!u){ $("wrs-detail").innerHTML=`<p class="muted" style="text-align:center;padding:20px">⬆️ เลือกชื่อนักเรียนเพื่อดูผลรายข้อ</p>`; return; }
+  $("wrs-detail").innerHTML=`<div style="text-align:center;padding:26px"><span class="spinner-sm"></span> <span style="color:var(--ink-soft)">กำลังโหลดข้อมูล...</span></div>`;
+  try{ const rec=await api("getWritingOne",{lessonId:wrsCurrentLesson.id,username:u});
+    renderWrsStudent(u,rec); }
+  catch(err){ $("wrs-detail").innerHTML=`<p class="muted" style="text-align:center;padding:20px">โหลดไม่สำเร็จ ลองเลือกใหม่อีกครั้ง</p>`; }
+});
 
-function renderWrsStudent(username){
-  const rec=wrsState.scores.find(s=>String(s.lessonId)===String(wrsCurrentLesson.id) && String(s.username).trim()===String(username).trim());
+function renderWrsStudent(username,rec){
   const box=$("wrs-detail");
   if(!rec){ box.innerHTML=`<p class="muted">ไม่พบข้อมูล</p>`; return; }
   const pct=rec.total?Math.round(rec.score/rec.total*100):0;
@@ -1850,33 +1868,33 @@ let recState={lessons:[],recordings:[],students:[],tests:[]}, recCurrentLesson=n
 async function goRecordings(){ if(!isTeacher())return toast("หน้านี้สำหรับครูเท่านั้น","error");
   show("view-recordings");
   $("rec-lessons-mode").style.display="block"; $("rec-detail-mode").style.display="none";
-  loading(true,"กำลังโหลดเสียงอ่าน...");
-  try{ const [lessons,recordings,students,tests]=await Promise.all([
-      api("getLessons"),api("getRecordings"),api("listStudents"),api("getTests")]);
-    recState={lessons,recordings,students,tests}; loading(false); renderRecLessons(); }
+  loading(true,"กำลังโหลดรายการบท...");
+  try{ const [lessons,students,tests]=await Promise.all([
+      api("getLessons"),api("listStudents"),api("getTests")]);
+    recState={lessons,recordings:[],students,tests}; loading(false); renderRecLessons(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
-/* โหมดเลือกบท: แสดงบทเรียนเป็นการ์ด พร้อมจำนวนเสียงอ่านในแต่ละบท */
+/* โหมดเลือกบท: แสดงบทเรียนเป็นการ์ด (ไม่ต้องนับเสียงล่วงหน้าเพื่อความเร็ว) */
 function renderRecLessons(){
-  const counts={}; (recState.recordings||[]).forEach(r=>{ counts[r.lessonId]=(counts[r.lessonId]||0)+1; });
   const grid=$("rec-lesson-grid"); grid.innerHTML="";
   $("rec-lessons-empty").style.display=recState.lessons.length?"none":"block";
-  recState.lessons.forEach(l=>{ const c=counts[l.id]||0;
+  recState.lessons.forEach(l=>{
     const card=document.createElement("button"); card.className="lesson-card";
     const cover=l.coverUrl
       ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>📖</div>'">`
       : `<div class="cover cover--empty">📖</div>`;
-    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">🎧 ${c} เสียงอ่าน</div></div>`;
+    card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">🎧 แตะเพื่อเลือกนักเรียน</div></div>`;
     card.addEventListener("click",()=>openRecLesson(l)); grid.appendChild(card); }); }
 
-/* เปิดบทที่เลือก -> มีดรอปดาวน์เลือกนักเรียนที่จะตรวจ */
+/* เปิดบทที่เลือก -> มีดรอปดาวน์เลือกนักเรียน (ยังไม่โหลดเสียง จนกว่าจะเลือกชื่อ) */
 function openRecLesson(lesson){ recCurrentLesson=lesson;
   $("rec-lessons-mode").style.display="none"; $("rec-detail-mode").style.display="block";
   $("rec-lesson-title").textContent="🎧 "+lesson.title;
   const sel=$("rec-filter-student");
-  let opts=`<option value="">— นักเรียนทุกคน —</option>`;
+  let opts=`<option value="">— เลือกนักเรียน —</option>`;
   recState.students.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
   sel.innerHTML=opts; sel.value="";
+  recState.recordings=[];
   if(typeof stopAllRecordings==="function") stopAllRecordings();
   recPreloadToken++; $("rec-loadbar").style.display="none";
   $("rec-flag-only").checked=false;
@@ -1925,7 +1943,9 @@ function renderRecList(){
   if($("rec-flag-only").checked) rows=rows.filter(r=>r.flagged);
   recCurrentRows=rows;
   const ul=$("rec-list"); ul.innerHTML="";
-  if(!rows.length){ ul.innerHTML=`<li class="muted">${$("rec-flag-only").checked?"ไม่มีคำที่ติดธงในนี้":("ยังไม่มีเสียงอ่านในบทนี้"+(sel.value?" ของนักเรียนคนนี้":""))}</li>`;
+  if(!sel.value){ ul.innerHTML=`<li class="muted">⬆️ เลือกนักเรียนจากช่องด้านบนเพื่อดูและตรวจเสียงอ่าน</li>`;
+    $("rec-playall").disabled=true; return; }
+  if(!rows.length){ ul.innerHTML=`<li class="muted">${$("rec-flag-only").checked?"ไม่มีคำที่ติดธงในนี้":"นักเรียนคนนี้ยังไม่มีเสียงอ่านในบทนี้"}</li>`;
     $("rec-playall").disabled=true; return; }
   $("rec-playall").disabled=false;
   rows.forEach(r=>{ const li=document.createElement("li"); li.className="row"+(r.flagged?" flagged":""); li.dataset.rid=r.id;
@@ -2014,15 +2034,25 @@ $("rec-back").addEventListener("click",()=>{
   stopAllRecordings(); recPreloadToken++; $("rec-loadbar").style.display="none";
   $("rec-detail-mode").style.display="none"; $("rec-lessons-mode").style.display="block";
   renderRecLessons(); });
-$("rec-filter-student").addEventListener("change",()=>{ stopAllRecordings(); renderRecList(); renderGradeBox();
-  if($("rec-filter-student").value) preloadCurrentStudentAudio();
-  else { recPreloadToken++; $("rec-loadbar").style.display="none"; } });
+$("rec-filter-student").addEventListener("change",()=>{ stopAllRecordings(); loadStudentRecordings(); });
+async function loadStudentRecordings(){
+  const u=$("rec-filter-student").value;
+  recPreloadToken++; $("rec-loadbar").style.display="none";
+  if(!u){ recState.recordings=[]; renderRecList(); renderGradeBox(); return; }
+  $("rec-list").innerHTML=`<li class="muted"><span class="spinner-sm"></span> กำลังโหลดข้อมูลของนักเรียน...</li>`;
+  $("rec-playall").disabled=true;
+  try{
+    const recs=await api("getRecordings",{lessonId:recCurrentLesson.id,username:u});
+    // เก็บเฉพาะของบท/คนนี้ (เผื่อ state เดิม)
+    recState.recordings=(recState.recordings||[]).filter(r=>!(String(r.lessonId)===String(recCurrentLesson.id)&&String(r.username).trim()===String(u).trim())).concat(recs||[]);
+    renderRecList(); renderGradeBox();
+    preloadCurrentStudentAudio();
+  }catch(err){ $("rec-list").innerHTML=`<li class="muted">โหลดไม่สำเร็จ ลองเลือกใหม่อีกครั้ง</li>`; toast(err.message,"error"); }
+}
 $("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return; stopAllRecordings();
   loading(true,"กำลังรีเฟรช...");
-  try{ const [recordings,tests]=await Promise.all([api("getRecordings"),api("getTests")]);
-    recState.recordings=recordings; recState.tests=tests; loading(false);
-    renderRecList(); renderGradeBox();
-    if($("rec-filter-student").value) preloadCurrentStudentAudio(); }
+  try{ const tests=await api("getTests"); recState.tests=tests; loading(false);
+    loadStudentRecordings(); }
   catch(err){ loading(false); toast(err.message,"error"); } });
 
 let recPlayer=null;
@@ -2121,7 +2151,7 @@ function renderReport(username){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v5";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v7";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
