@@ -59,7 +59,8 @@ img{display:block;max-width:100%}
 .menu-btn:active{transform:translateY(2px) scale(.97)}
 .menu-btn:focus-visible{outline:4px solid #bfe7ff;outline-offset:2px}
 .menu-panel{position:absolute;top:calc(100% + 12px);left:0;background:#fff;border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-h);padding:10px;min-width:268px;max-width:86vw;z-index:80;display:none;flex-direction:column;gap:6px}
+  box-shadow:var(--shadow-h);padding:10px;min-width:268px;max-width:86vw;z-index:80;display:none;flex-direction:column;gap:6px;
+  max-height:calc(100vh - 100px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .menu-panel.open{display:flex;animation:menuIn .18s}
 @keyframes menuIn{from{opacity:0;transform:translateY(-10px)}}
 .menu-item{font-family:"Baloo Thai 2",cursive;font-size:1.12rem;text-align:left;padding:14px 16px;border-radius:14px;
@@ -2164,7 +2165,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v8";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v9";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
