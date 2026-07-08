@@ -208,6 +208,13 @@ img{display:block;max-width:100%}
 .row.flagged{background:#fff4f4;box-shadow:inset 0 0 0 2px #ffc2c2}
 .mini.flag-on{background:#ffe9e9;color:var(--danger)}
 .rec-loadbar{display:none;align-items:center;gap:10px;background:#eef7ff;border:2px solid #cfe6ff;border-radius:14px;padding:11px 14px;margin-bottom:8px;color:#0f5e8a;font-weight:700}
+/* รายชื่อรอประเมิน */
+.rec-pending{margin:14px 0 4px}
+.rec-pending .ptitle{font-family:"Baloo Thai 2",cursive;font-weight:700;color:var(--ink);margin-bottom:8px}
+.rec-pending .chips{display:flex;flex-wrap:wrap;gap:8px}
+.rec-pending .pchip{background:#fff4e0;border:2px solid #ffd48a;color:#8a5a00;border-radius:999px;padding:7px 14px;font-weight:700;font-size:.95rem;cursor:pointer;transition:transform .1s}
+.rec-pending .pchip:active{transform:scale(.96)}
+.rec-pending .pdone{background:#e9f9f0;border:2px solid #b8ebcf;color:#1f7a4d;border-radius:14px;padding:10px 14px;font-weight:700}
 .rec-loadbar .bar{flex:1;height:10px;border-radius:999px;background:#d7e8fb;overflow:hidden;min-width:90px}
 .rec-loadbar .bar > i{display:block;height:100%;width:0;background:var(--teal);transition:width .2s}
 .spinner-sm{width:18px;height:18px;flex:0 0 auto;border-radius:50%;border:3px solid #cfe6ff;border-top-color:var(--teal);animation:recspin .8s linear infinite}
@@ -592,6 +599,7 @@ textarea{resize:vertical;min-height:150px}
       <button class="mini" id="rec-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
       <h2 class="display" id="rec-lesson-title"></h2>
       <button class="mini mini--danger" id="rec-del-lesson" style="margin-top:6px">🗑️ ลบเสียงของบทนี้ทั้งหมด (ทุกคน)</button>
+      <div id="rec-pending" class="rec-pending"></div>
       <div class="section" style="margin-top:14px">
         <div class="inline" style="align-items:flex-end">
           <div class="field"><label for="rec-filter-student">เลือกนักเรียนที่จะตรวจ</label>
@@ -1911,8 +1919,25 @@ function openRecLesson(lesson){ recCurrentLesson=lesson;
   if(typeof stopAllRecordings==="function") stopAllRecordings();
   recPreloadToken++; $("rec-loadbar").style.display="none";
   $("rec-flag-only").checked=false;
-  renderRecList(); renderGradeBox();
+  renderRecList(); renderGradeBox(); loadRecPending();
   $("rec-detail-mode").scrollIntoView({behavior:"smooth"}); }
+
+/* รายชื่อนักเรียนที่ส่งเสียงแล้วแต่ครูยังไม่ประเมิน (ต้องมีเสียงอ่านก่อนถึงจะขึ้น) */
+async function loadRecPending(){
+  const box=$("rec-pending"); box.innerHTML=`<div class="ptitle">⏳ กำลังตรวจว่าใครยังไม่ได้ประเมิน...</div>`;
+  try{
+    const list=await api("getLessonReviewStatus",{lessonId:recCurrentLesson.id});
+    const pending=(list||[]).filter(s=>!s.graded);
+    if(!list.length){ box.innerHTML=`<div class="pdone">ยังไม่มีนักเรียนส่งเสียงอ่านในบทนี้</div>`; return; }
+    if(!pending.length){ box.innerHTML=`<div class="pdone">✅ ประเมินครบทุกคนแล้วในบทนี้</div>`; return; }
+    let chips=pending.map(s=>`<button type="button" class="pchip" data-u="${esc(s.username)}">🎧 ${esc(s.displayName||s.username)}</button>`).join("");
+    box.innerHTML=`<div class="ptitle">📋 ยังไม่ได้ประเมิน (${pending.length} คน) — แตะชื่อเพื่อไปตรวจ</div><div class="chips">${chips}</div>`;
+    box.querySelectorAll(".pchip").forEach(b=>b.addEventListener("click",()=>{
+      $("rec-filter-student").value=b.dataset.u; stopAllRecordings(); loadStudentRecordings();
+      $("rec-list").scrollIntoView({behavior:"smooth",block:"center"});
+    }));
+  }catch(err){ box.innerHTML=""; }
+}
 
 /* กล่องให้คะแนนการอ่านระดับบทเรียน — แสดงเมื่อเลือกนักเรียนเจาะจง */
 function renderGradeBox(){
@@ -1945,7 +1970,8 @@ async function saveGrade(username,grade,comment){
     let t=(recState.tests||[]).find(t=>String(t.username).trim()===username && String(t.lessonId)===String(recCurrentLesson.id));
     if(t){ t.grade=grade; t.comment=comment||""; if(grade)t.status="graded"; }
     else { (recState.tests=recState.tests||[]).push({username,lessonId:recCurrentLesson.id,grade,comment:comment||"",status:grade?"graded":"submitted"}); }
-    toast("บันทึกแล้ว"+(grade?" (คะแนน “"+grade+"”)":""),"success"); renderGradeBox(); }
+    toast("บันทึกแล้ว"+(grade?" (คะแนน “"+grade+"”)":""),"success"); renderGradeBox();
+    if(grade) loadRecPending(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 let recCurrentRows=[];
@@ -2186,7 +2212,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v13";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v14";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
