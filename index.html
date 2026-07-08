@@ -591,6 +591,7 @@ textarea{resize:vertical;min-height:150px}
     <div id="rec-detail-mode" style="display:none">
       <button class="mini" id="rec-back" style="margin-bottom:14px">⬅️ กลับไปเลือกบท</button>
       <h2 class="display" id="rec-lesson-title"></h2>
+      <button class="mini mini--danger" id="rec-del-lesson" style="margin-top:6px">🗑️ ลบเสียงของบทนี้ทั้งหมด (ทุกคน)</button>
       <div class="section" style="margin-top:14px">
         <div class="inline" style="align-items:flex-end">
           <div class="field"><label for="rec-filter-student">เลือกนักเรียนที่จะตรวจ</label>
@@ -1443,14 +1444,17 @@ $("test-submit").addEventListener("click",async()=>{
   const total=testWords.length, done=testWords.filter(w=>testBlobs[w.id]).length;
   if(total===0 || done<total) return toast("ยังอัดเสียงไม่ครบทุกคำนะ","error");
   if(!confirm("ส่งแบบทดสอบการอ่านบทนี้ให้คุณครู?\nส่งแล้วจะแก้ไขไม่ได้ และทำได้เพียงครั้งเดียว")) return;
-  loading(true,`กำลังส่งเสียงอ่าน... (0/${total})`);
+  loading(true,"กำลังเตรียมส่ง...");
   try{
+    // เคลียร์เสียงเดิมของบทนี้ครั้งเดียว (อ่านชีตครั้งเดียว) แล้วต่อท้ายทีละคำแบบไม่ต้องอ่านซ้ำ
+    await api("clearMyLessonRecordings",{lessonId:testCurrentLesson.id});
     let i=0;
+    loading(true,`กำลังส่งเสียงอ่าน... (0/${total})`);
     for(const w of testWords){
       const t=testBlobs[w.id];
       const b64=await blobToBase64(t.blob);
       await api("submitRecording",{lessonId:testCurrentLesson.id,wordId:w.id,
-        wordText:w.text,dataBase64:b64,mimeType:t.mime,name:"test_"+w.id});
+        wordText:w.text,dataBase64:b64,mimeType:t.mime,name:"test_"+w.id,skipDedup:true});
       i++; loading(true,`กำลังส่งเสียงอ่าน... (${i}/${total})`);
     }
     await api("submitTest",{lessonId:testCurrentLesson.id});
@@ -2058,6 +2062,19 @@ async function loadStudentRecordings(){
     preloadCurrentStudentAudio();
   }catch(err){ $("rec-list").innerHTML=`<li class="muted">โหลดไม่สำเร็จ ลองเลือกใหม่อีกครั้ง</li>`; toast(err.message,"error"); }
 }
+$("rec-del-lesson").addEventListener("click",async()=>{
+  if(!recCurrentLesson) return;
+  if(!confirm("ลบเสียงอ่านของบทนี้ทั้งหมด (ของนักเรียนทุกคน)?\nลบแล้วเอากลับไม่ได้ (ผลทดสอบ/คะแนนยังอยู่)")) return;
+  stopAllRecordings(); recPreloadToken++; $("rec-loadbar").style.display="none";
+  loading(true,"กำลังลบเสียงของบทนี้...");
+  try{ let guard=0;
+    while(true){ const r=await api("deleteLessonRecordings",{lessonId:recCurrentLesson.id});
+      if(r && r.done) break; if(++guard>500) break;
+      loading(true,`กำลังลบไฟล์เสียง... เหลืออีก ${(r&&r.remaining)||0} ไฟล์`); }
+    loading(false); toast("ลบเสียงของบทนี้เรียบร้อยแล้ว 🗑️","success");
+    recState.recordings=[]; $("rec-filter-student").value=""; renderRecList(); renderGradeBox();
+  }catch(err){ loading(false); toast("ลบไม่สำเร็จ: "+err.message+" — ลองกดอีกครั้ง","error"); } });
+
 $("rec-refresh").addEventListener("click",async()=>{ if(!isTeacher())return; stopAllRecordings();
   loading(true,"กำลังรีเฟรช...");
   try{ const tests=await api("getTests"); recState.tests=tests; loading(false);
@@ -2169,7 +2186,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v10";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v13";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
@@ -2487,8 +2504,8 @@ $("rec-start").addEventListener("click",async()=>{
     try{ stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}}); }
     catch(_){ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
     const mime=pickAudioMime();
-    // บิตเรตต่ำสำหรับเสียงพูด ~32kbps -> ไฟล์เล็กลงมาก อัปเร็วขึ้น ทนเน็ตอ่อนได้ดีขึ้น
-    const opts=Object.assign({audioBitsPerSecond:32000}, mime?{mimeType:mime}:{});
+    // บิตเรตต่ำสำหรับเสียงพูด ~24kbps -> ไฟล์เล็กลงอีก อัปเร็วขึ้น (ยังฟังชัดพอตรวจการอ่าน)
+    const opts=Object.assign({audioBitsPerSecond:24000}, mime?{mimeType:mime}:{});
     let mr;
     try{ mr=new MediaRecorder(stream,opts); }
     catch(_){ try{ mr=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream); }catch(__){ mr=new MediaRecorder(stream); } }
