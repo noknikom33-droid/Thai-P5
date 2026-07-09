@@ -1268,22 +1268,36 @@ async function preloadAudio(words){
   let done=0; const total=list.length;
   loading(true,`กำลังโหลดเสียง... (0/${total})`);
   const bump=()=>{ done++; loading(true,`กำลังโหลดเสียง... (${done}/${total})`); };
-  const queue=list.slice(), CONC=4;   // โหลดพร้อมกันทีละ 4 จาก CDN Google (ไม่ผ่านเซิร์ฟเวอร์เรา)
+  const queue=list.slice(), CONC=3;   // โหลดพร้อมกันทีละ 3 (ลอง CDN ก่อน ถ้าไม่ได้ค่อยผ่านเซิร์ฟเวอร์)
   async function worker(){ while(queue.length){ const w=queue.shift();
     await preloadOneWordAudio(w.audioUrl); bump(); } }
   await Promise.all(Array.from({length:Math.min(CONC,total)},()=>worker()));
 }
-// โหลดเสียงครู 1 คำ มาเก็บเป็น blob ในเครื่อง -> เล่นทันที ถ้าอ่าน blob ไม่ได้ (CORS) ก็ปล่อยให้สตรีมปกติ
+function b64ToBlob(b64, mime){
+  const bin=atob(b64||""); const len=bin.length; const bytes=new Uint8Array(len);
+  for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
+  return new Blob([bytes],{type:mime||"audio/webm"});
+}
+function setWordBlob(audioUrl,blob){
+  const url=URL.createObjectURL(blob); wordBlobUrls[audioUrl]=url;
+  const el=new Audio(url); el.preload="auto"; wordAudioEls[audioUrl]=el;
+}
+// โหลดเสียงครู 1 คำ มาเก็บเป็น blob ในเครื่อง -> เล่นทันที
 async function preloadOneWordAudio(audioUrl){
   if(wordBlobUrls[audioUrl] || wordAudioEls[audioUrl]) return;   // มีแล้ว ไม่ต้องโหลดซ้ำ
+  // 1) ลองดึงจาก CDN ก่อน (เร็ว ไม่ผ่านเซิร์ฟเวอร์)
   try{
-    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),10000);
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),6000);
     const res=await fetch(directDriveUrl(audioUrl),{signal:ctrl.signal}); clearTimeout(t);
-    if(!res.ok) throw new Error("bad");
-    const blob=await res.blob(); if(!blob || blob.size<200) throw new Error("empty");
-    const url=URL.createObjectURL(blob); wordBlobUrls[audioUrl]=url;
-    const el=new Audio(url); el.preload="auto"; wordAudioEls[audioUrl]=el;
-  }catch(_){ /* อ่าน blob ไม่ได้ (เช่น CORS) -> ไม่ตั้ง element ไว้ เดี๋ยว getWordAudioEl จะสตรีมจากลิงก์แทน */ }
+    if(res.ok){ const blob=await res.blob(); if(blob && blob.size>200){ setWordBlob(audioUrl,blob); return; } }
+  }catch(_){}
+  // 2) CDN อ่านไม่ได้ (เช่น CORS) -> ดึงผ่าน getAudio (base64) ของเราแล้วทำ blob (ชัวร์ เล่นทันที)
+  try{
+    let fileId=audioUrl;
+    if(/^https?:/i.test(audioUrl)){ const m=audioUrl.match(/[-\w]{25,}/); fileId=m?m[0]:audioUrl; }
+    const r=await api("getAudio",{id:fileId});
+    setWordBlob(audioUrl, b64ToBlob(r.base64, r.mimeType));
+  }catch(_){ /* ยังไม่ได้ -> getWordAudioEl จะสตรีม/ fallback ตอนเล่นเอง */ }
 }
 
 async function openLesson(lesson){ currentLessonId=lesson.id;
@@ -2262,7 +2276,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v18";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v19";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
