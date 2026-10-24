@@ -846,23 +846,40 @@ let adminLessonId = null, pendingCoverUrl = "";
 let dashState = null;
 
 /* เรียก API ผ่าน POST แบบ text/plain เพื่อเลี่ยงปัญหา CORS */
+/* ⚡ จำกัดคำขอที่วิ่งพร้อมกันต่อเครื่อง (ไม่เกิน 3)
+   Google Apps Script รับงานพร้อมกันได้จำกัด (~30 งานต่อบัญชีเจ้าของ) ถ้านักเรียน 15 คน
+   ยิงคนละหลายคำขอพร้อมกัน จะเกินโควตา -> โดนปฏิเสธ -> ลองใหม่ -> รอนาน 40-60 วิ */
+const API_MAX_INFLIGHT = 3;
+let _apiInflight = 0; const _apiWaiters = [];
+function _apiAcquire(){ if(_apiInflight < API_MAX_INFLIGHT){ _apiInflight++; return Promise.resolve(); }
+  return new Promise(r=>_apiWaiters.push(r)).then(()=>{ _apiInflight++; }); }
+function _apiRelease(){ _apiInflight--; const n=_apiWaiters.shift(); if(n) n(); }
+// หน่วงก่อนลองใหม่แบบ "สุ่ม" กันทุกเครื่องลองซ้ำพร้อมกันเป๊ะจนเซิร์ฟเวอร์ล้นอีกรอบ
+function retryDelay(attempt){ return 700*(attempt+1) + Math.floor(Math.random()*900); }
+// คำสั่งที่ยังไม่มีในหลังบ้าน (ยังไม่ได้ deploy Code.gs ใหม่) -> หน้าเว็บจะถอยไปใช้วิธีเดิมเอง
+function isUnknownAction(err){ return !!(err && err.message && err.message.indexOf("ไม่รู้จักคำสั่ง")>=0); }
+
 async function api(action, params = {}, _attempt = 0) {
-  const RETRIES = 2;                 // ลองใหม่อัตโนมัติเมื่อพลาดชั่วคราว (ลดจาก 3 -> fail เร็วขึ้น)
+  const RETRIES = 2;                 // ลองใหม่อัตโนมัติเมื่อพลาดชั่วคราว
+  const opt = params.__opt || {};    // ตัวเลือกพิเศษ: {timeout, quiet}
+  const body = Object.assign({ action, token: state.token }, params); delete body.__opt;
   let res, data;
+  await _apiAcquire();
   try{
     const ctrl = new AbortController();
-    const timer = setTimeout(()=>ctrl.abort(), 22000);   // timeout 22 วิ (ลดจาก 45)
+    const timer = setTimeout(()=>ctrl.abort(), opt.timeout || 25000);   // ปกติ 25 วิ (ส่งแบบทดสอบให้นานกว่า)
     // ถ้ารอเกิน 8 วิ แจ้งผู้ใช้ว่าเซิร์ฟเวอร์ช้ากว่าปกติ (ครั้งแรกเท่านั้น)
-    const slow = setTimeout(()=>{ if(_attempt===0 && typeof toast==="function") toast("เซิร์ฟเวอร์ช้ากว่าปกติ กำลังรอสักครู่...","error"); }, 8000);
+    const slow = opt.quiet ? null : setTimeout(()=>{ if(_attempt===0 && typeof toast==="function") toast("เซิร์ฟเวอร์ช้ากว่าปกติ กำลังรอสักครู่...","error"); }, 8000);
     try{
-      res = await fetch(API_URL, { method:"POST", signal:ctrl.signal,
-        body: JSON.stringify(Object.assign({ action, token: state.token }, params)) });
-    } finally { clearTimeout(timer); clearTimeout(slow); }
-    data = await res.json();
+      res = await fetch(API_URL, { method:"POST", signal:ctrl.signal, body: JSON.stringify(body) });
+      data = await res.json();       // ถ้าเซิร์ฟเวอร์ล้น Google จะตอบเป็นหน้า HTML -> อ่าน JSON ไม่ได้ -> ไปลองใหม่
+    } finally { clearTimeout(timer); if(slow) clearTimeout(slow); }
   }catch(err){
-    if (_attempt < RETRIES){ await sleep(500*(_attempt+1)); return api(action, params, _attempt+1); }
+    _apiRelease();
+    if (_attempt < RETRIES){ await sleep(retryDelay(_attempt)); return api(action, params, _attempt+1); }
     throw new Error("เชื่อมต่อไม่ได้ ลองใหม่อีกครั้งนะ (เน็ตอาจไม่เสถียร)");
   }
+  _apiRelease();
   if (!data || !data.ok) {
     const emsg = (data && data.error) || "";
     if (emsg && (emsg.indexOf("เข้าสู่ระบบ") >= 0 || emsg.indexOf("ไม่พบบัญชี") >= 0)) {
@@ -872,15 +889,46 @@ async function api(action, params = {}, _attempt = 0) {
       throw new Error(emsg);
     }
     // งานเขียนพลาดเพราะคนใช้พร้อมกันเยอะ -> ลองใหม่อัตโนมัติ
-    if (_attempt < RETRIES && (emsg.indexOf("พร้อมกัน") >= 0 || emsg.indexOf("ลองอีกครั้ง") >= 0 || emsg.indexOf("lock") >= 0 || emsg.indexOf("Lock") >= 0)){
-      await sleep(700*(_attempt+1)); return api(action, params, _attempt+1);
+    if (_attempt < RETRIES && (emsg.indexOf("พร้อมกัน") >= 0 || emsg.indexOf("ลองอีกครั้ง") >= 0 || emsg.indexOf("lock") >= 0 || emsg.indexOf("Lock") >= 0 || emsg.indexOf("too many") >= 0 || emsg.indexOf("Too many") >= 0)){
+      await sleep(retryDelay(_attempt)); return api(action, params, _attempt+1);
     }
     throw new Error(emsg || "เกิดข้อผิดพลาด กรุณาลองใหม่");
   }
   if(_CONTENT_WRITES.has(action)){ invalidateContentCache(); }
+  if(_BOOT_WRITES.has(action)){ _boot=null; }          // ส่งงานแล้ว -> ข้อมูลหน้าแรกนักเรียนต้องโหลดใหม่
   return data.data;
 }
 const _cache = { lessons:null, words:{} };
+
+/* ⚡ ข้อมูลหน้าแรกของนักเรียน (บท + ความก้าวหน้า + ผลทดสอบ + คะแนนเขียน + ตรา) โหลดคำขอเดียว
+   แล้วจำไว้ 90 วิ — สลับเมนู บทเรียน/ทดสอบอ่าน/ทดสอบเขียน/ตรา ไม่ต้องยิงเซิร์ฟเวอร์ซ้ำ */
+let _boot=null, _bootAt=0;
+const BOOT_TTL=90000;
+const _BOOT_WRITES=new Set(["submitTest","submitTestBatch","submitRecording","clearMyLessonRecordings","submitWritingScore"]);
+async function studentBoot(force){
+  if(!force && _boot && (Date.now()-_bootAt)<BOOT_TTL) return _boot;
+  let b;
+  try{ b=await api("studentBoot"); }
+  catch(err){
+    if(!isUnknownAction(err)) throw err;
+    // หลังบ้านยังเป็นเวอร์ชันเก่า -> ใช้วิธีเดิม (หลายคำขอ)
+    const [lessons,progress,tests,writing,badges]=await Promise.all([
+      api("getLessons"),api("getMyProgress"),api("getMyTests"),
+      api("getMyWriting").catch(()=>[]),api("getBadgeConfig").catch(()=>[])]);
+    b={lessons,progress,tests,writing,badges};
+  }
+  b.progress=b.progress||[]; b.tests=b.tests||[]; b.writing=b.writing||[];
+  _boot=b; _bootAt=Date.now();
+  if(b.lessons) _cache.lessons=b.lessons;
+  return b;
+}
+// อัปเดตความก้าวหน้าในข้อมูลที่จำไว้ทันที (ไม่ต้องรอเซิร์ฟเวอร์) -> กลับหน้าบทเรียนเห็นดาว/ตัวเลขล่าสุด
+function patchBootProgress(lessonId,readIds,totalCount){
+  if(!_boot) return;
+  const list=_boot.progress; let p=list.find(x=>String(x.lessonId)===String(lessonId));
+  if(!p){ p={lessonId}; list.push(p); }
+  p.readIds=readIds.slice(); p.readCount=readIds.length; p.totalCount=totalCount;
+}
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 const _CONTENT_WRITES = new Set(["addLesson","updateLesson","deleteLesson","addWords","updateWord","deleteWord","reorderWord","uploadAudio","resetAllProgress"]);
 function invalidateContentCache(){ _cache.lessons=null; _cache.words={}; }
@@ -1081,47 +1129,77 @@ document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && menuOpen) clos
 let voices=[], warnedNoThai=false;
 function loadVoices(){ if("speechSynthesis" in window) voices=speechSynthesis.getVoices(); }
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
-const audioCache={};        // สำหรับเสียงนักเรียน (base64 ผ่าน API — เก็บเป็นความลับ)
-const wordAudioEls={};      // เสียงครู: เก็บ <audio> ที่พร้อมเล่น
-const wordBlobUrls={};      // เสียงครู: object URL (blob:) ที่โหลดมาเก็บในเครื่องแล้ว -> เล่นทันที
-const directFailed={};      // เสียงครูไฟล์ที่เล่นลิงก์ตรงไม่ได้ -> ถอยไป base64 แทน
-// แปลงเป็นลิงก์สตรีมของ Google (lh3 = CDN เล่นได้ไว) สำหรับเสียงครู
-function directDriveUrl(u){
-  let id=null;
-  if(/^https?:/i.test(u)){
-    if(u.indexOf("lh3.googleusercontent.com/d/")>=0) return u;   // เป็นลิงก์ lh3 อยู่แล้ว
-    const m=u.match(/[-\w]{25,}/); id=m?m[0]:null;               // ดึง id จากลิงก์เก่า (uc?export / อื่น ๆ)
-  }else{ id=u; }                                                 // เป็น fileId ดิบ
-  return id ? "https://lh3.googleusercontent.com/d/"+id : u;
+const audioCache={};        // เสียงนักเรียนที่ครูฟัง (base64 ผ่าน API — เก็บเป็นความลับ ไม่จำลงเครื่อง)
+const wordAudioEls={};      // เสียงครู: <audio> ที่พร้อมเล่นจากไฟล์ในเครื่อง (key = fileId)
+/* ดึง fileId ของ Google Drive จากค่าในช่อง audioUrl (รองรับ: id ดิบ / ลิงก์ lh3 / ลิงก์ uc?export) */
+function audioIdOf(u){
+  const s=String(u||"").trim(); if(!s) return "";
+  if(/^https?:/i.test(s)){ const m=s.match(/[-\w]{25,}/); return m?m[0]:""; }
+  return /^[-\w]{20,}$/.test(s)?s:"";
 }
-function getWordAudioEl(audioUrl){
-  if(wordAudioEls[audioUrl]) return wordAudioEls[audioUrl];
-  const src = wordBlobUrls[audioUrl] || directDriveUrl(audioUrl);   // มี blob ในเครื่อง? เล่นทันที : สตรีมจาก CDN
-  const el=new Audio(src); el.preload="auto";
-  wordAudioEls[audioUrl]=el; return el;
+/* ⚡ ที่เก็บเสียงครูถาวรในเครื่อง (Cache Storage) — โหลดครั้งเดียว เปิดบทเดิมวันไหนก็เล่นได้ทันที
+   ไม่ต้องถามเซิร์ฟเวอร์อีก (ครูอัดเสียงใหม่ = ไฟล์ใหม่ id ใหม่ ระบบจะโหลดอันใหม่ให้เอง) */
+const AUDIO_STORE="arnsanook-audio-v1";
+async function audioStoreGet(id){
+  try{ if(!("caches" in window)) return null;
+    const c=await caches.open(AUDIO_STORE); const r=await c.match("./__audio/"+id);
+    if(!r) return null; const b=await r.blob(); return (b && b.size>100)?b:null;
+  }catch(_){ return null; } }
+async function audioStorePut(id,blob){
+  try{ if(!("caches" in window)) return;
+    const c=await caches.open(AUDIO_STORE);
+    await c.put("./__audio/"+id,new Response(blob,{headers:{"Content-Type":blob.type||"audio/webm"}}));
+  }catch(_){} }
+function setWordAudio(id,blob){
+  const el=new Audio(URL.createObjectURL(blob)); el.preload="auto"; wordAudioEls[id]=el; }
+function b64ToBlob(b64, mime){
+  const bin=atob(b64||""); const len=bin.length; const bytes=new Uint8Array(len);
+  for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
+  return new Blob([bytes],{type:mime||"audio/webm"});
 }
-// เสียงนักเรียน (ครูฟัง) — ยังผ่าน API base64 เพื่อความเป็นส่วนตัว
+/* เตรียมเสียงครูของทั้งบทให้พร้อมก่อนแสดงหน้า:
+   1) ดูในเครื่องก่อน (เร็วมาก ไม่ใช้เน็ต)  2) ที่ยังไม่มี -> ขอจากเซิร์ฟเวอร์ "คำขอเดียว" ทั้งบท */
+async function ensureLessonAudio(lessonId, words){
+  const ids=[...new Set((words||[]).map(w=>audioIdOf(w.audioUrl)).filter(Boolean))].filter(id=>!wordAudioEls[id]);
+  if(!ids.length) return;
+  loading(true,"กำลังเตรียมเสียง...");
+  const missing=[];
+  await Promise.all(ids.map(async id=>{ const b=await audioStoreGet(id); if(b) setWordAudio(id,b); else missing.push(id); }));
+  if(!missing.length) return;
+  loading(true,`กำลังโหลดเสียง ${missing.length} คำ... (ครั้งแรกเท่านั้น)`);
+  try{
+    const r=await api("getLessonAudio",{lessonId,want:missing,__opt:{timeout:60000}});
+    const audio=(r&&r.audio)||{};
+    Object.keys(audio).forEach(id=>{ const v=audio[id]; if(!v||!v.b64) return;
+      const blob=b64ToBlob(v.b64,v.mime); setWordAudio(id,blob); audioStorePut(id,blob); });
+  }catch(err){
+    if(!isUnknownAction(err)) return;            // เน็ตพลาด -> ตอนกดลำโพงจะลองโหลดคำนั้นอีกที
+    // หลังบ้านยังเป็นเวอร์ชันเก่า -> โหลดทีละคำแบบเดิม (ทีละ 2)
+    const queue=missing.slice();
+    async function worker(){ while(queue.length){ const id=queue.shift();
+      try{ const r=await api("getAudio",{id}); const blob=b64ToBlob(r.base64,r.mimeType); setWordAudio(id,blob); audioStorePut(id,blob); }catch(_){} } }
+    await Promise.all([worker(),worker()]);
+  }
+}
+// เสียงนักเรียน (ครูฟัง) / สำรองกรณีเสียงครูยังไม่ได้โหลด — ผ่าน API base64
 async function resolveAudioSrc(audioUrl){
   if(audioCache[audioUrl]) return audioCache[audioUrl];
-  let fileId=null;
-  if(!/^https?:/i.test(audioUrl)) fileId=audioUrl;
-  else { const m=audioUrl.match(/[-\w]{25,}/); if(m) fileId=m[0]; }
+  const fileId=audioIdOf(audioUrl);
   if(!fileId) return audioUrl;
   const res=await api("getAudio",{id:fileId});
   const src="data:"+(res.mimeType||"audio/webm")+";base64,"+res.base64;
   audioCache[audioUrl]=src; return src;
 }
 function speak(text,audioUrl){
-  if(!audioUrl){ ttsThai(text); return; }
-  let fellBack=false;
-  const fallback=()=>{ if(fellBack)return; fellBack=true; directFailed[audioUrl]=true;
-    resolveAudioSrc(audioUrl).then(src=>{ const a=new Audio(src); a.onerror=()=>ttsThai(text); a.play().catch(()=>ttsThai(text)); })
-      .catch(()=>ttsThai(text)); };
-  if(directFailed[audioUrl]){ fallback(); return; }   // เคยเล่นตรงไม่ได้ -> ไป base64 เลย
-  const el=getWordAudioEl(audioUrl);
-  el.onerror=fallback;
-  try{ el.currentTime=0; }catch(_){}
-  el.play().catch(fallback);
+  const id=audioIdOf(audioUrl);
+  if(!id){ ttsThai(text); return; }
+  const el=wordAudioEls[id];
+  if(el){ try{ el.currentTime=0; }catch(_){} el.play().catch(()=>ttsThai(text)); return; }   // ⚡ เล่นจากเครื่องทันที
+  // ยังไม่มีในเครื่อง (เช่นเน็ตพลาดตอนเตรียม) -> โหลดคำนี้คำเดียว แล้วจำไว้
+  resolveAudioSrc(audioUrl).then(src=>{
+    const a=new Audio(src); a.onerror=()=>ttsThai(text); a.play().catch(()=>ttsThai(text));
+    try{ const b=b64ToBlob(src.split(",")[1],(src.match(/^data:([^;]+)/)||[])[1]); setWordAudio(id,b); audioStorePut(id,b); }catch(_){}
+  }).catch(()=>ttsThai(text));
 }
 function ttsThai(text){ if(!("speechSynthesis" in window)){toast("เครื่องนี้ยังอ่านออกเสียงไม่ได้ แต่ดูคำได้นะ");return;}
   speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="th-TH"; u.rate=0.9;
@@ -1151,16 +1229,27 @@ function resetLoginUI(){
   if(!$("keypad").childElementCount) buildKeypad();
   loadRoster();
 }
+function renderRoster(list){
+  const sel=$("roster-select"); const cur=sel.value;
+  if(!list.length){ sel.innerHTML=`<option value="">— ยังไม่มีรายชื่อ —</option>`; $("roster-empty").style.display="block"; return; }
+  $("roster-empty").style.display="none";
+  let opts=`<option value="">— เลือกชื่อ —</option>`;
+  list.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
+  sel.innerHTML=opts;
+  if(cur && list.some(s=>String(s.username)===cur)) sel.value=cur;   // อย่ารีเซ็ตชื่อที่เด็กเลือกค้างไว้
+}
 async function loadRoster(){
   const sel=$("roster-select"); $("roster-empty").style.display="none";
-  sel.innerHTML=`<option value="">— กำลังโหลด... —</option>`;
+  // ⚡ แสดงรายชื่อที่จำไว้ในเครื่องทันที (ไม่ต้องรอเซิร์ฟเวอร์) แล้วค่อยอัปเดตเบื้องหลัง
+  let cached=null; try{ cached=JSON.parse(localStorage.getItem("roster")||"null"); }catch(_){}
+  if(Array.isArray(cached) && cached.length){ rosterList=cached; renderRoster(cached); }
+  else sel.innerHTML=`<option value="">— กำลังโหลด... —</option>`;
   try{
-    const list=await api("getStudentRoster"); rosterList=list;
-    if(!list.length){ sel.innerHTML=`<option value="">— ยังไม่มีรายชื่อ —</option>`; $("roster-empty").style.display="block"; return; }
-    let opts=`<option value="">— เลือกชื่อ —</option>`;
-    list.forEach(s=>{ opts+=`<option value="${esc(s.username)}">${esc(s.displayName||s.username)}</option>`; });
-    sel.innerHTML=opts;
+    const list=await api("getStudentRoster",{__opt:{quiet:!!cached}}); rosterList=list;
+    try{ localStorage.setItem("roster",JSON.stringify(list)); }catch(_){}
+    if(JSON.stringify(list)!==JSON.stringify(cached)) renderRoster(list);
   }catch(err){
+    if(Array.isArray(cached) && cached.length) return;   // มีรายชื่อเดิมใช้ได้อยู่แล้ว
     sel.innerHTML=`<option value="">— โหลดไม่ได้ —</option>`;
     $("roster-empty").style.display="block";
     $("roster-empty").textContent="โหลดรายชื่อไม่ได้ — ลองรีเฟรช หรือเข้าสู่ระบบสำหรับครู";
@@ -1213,6 +1302,7 @@ $("pin-back").addEventListener("click",()=>{ pinValue=""; updatePinDots(); $("ro
   $("login-pin").style.display="none"; $("login-pick").style.display="block"; });
 
 function setSession(user,token){ state.user=user; state.token=token;
+  _boot=null;   // เปลี่ยนผู้ใช้ -> ล้างข้อมูลหน้าแรกของคนก่อน
   localStorage.setItem("session",JSON.stringify(state));
   $("appbar").style.display="flex";
   buildMenu(); closeMenu();
@@ -1224,7 +1314,7 @@ function setSession(user,token){ state.user=user; state.token=token;
 function routeHome(){ if(isTeacher()){ goDashboard(); setActiveMenu("dashboard"); }
   else { goLessons(); setActiveMenu("lessons"); } }
 
-function doLogout(){ localStorage.removeItem("session");
+function doLogout(){ try{ flushProgress(); }catch(_){} localStorage.removeItem("session"); _boot=null;
   state={user:null,token:null}; closeMenu(); $("appbar").style.display="none";
   show("view-login"); resetLoginUI(); maybeShowInstall(); }
 
@@ -1232,10 +1322,9 @@ function doLogout(){ localStorage.removeItem("session");
 $("back-lessons").addEventListener("click",goLessons);
 
 async function goLessons(){ show("view-lessons"); loading(true,"กำลังเปิดห้องเรียน...");
-  try{ const [lessons,myProg]=await Promise.all([
-        cachedLessons(),
-        state.user.role==="student" ? api("getMyProgress").catch(()=>[]) : Promise.resolve([])
-      ]);
+  try{ let lessons, myProg=[];
+    if(state.user.role==="student"){ const b=await studentBoot(); lessons=b.lessons; myProg=b.progress; }  // ⚡ คำขอเดียว (หรือใช้ที่จำไว้)
+    else lessons=await cachedLessons();
     loading(false);
     const pmap={}; myProg.forEach(p=>pmap[p.lessonId]=p);
     const grid=$("lesson-grid"); grid.innerHTML="";
@@ -1262,57 +1351,30 @@ async function goLessons(){ show("view-lessons"); loading(true,"กำลัง�
 /* ===== หน้าคำในบทเรียน ===== */
 let currentWords=[], readSet=new Set(), currentLessonId=null;
 
-async function preloadAudio(words){
-  const list=(words||[]).filter(w=>w.audioUrl);
-  if(!list.length) return;
-  let done=0; const total=list.length;
-  loading(true,`กำลังโหลดเสียง... (0/${total})`);
-  const bump=()=>{ done++; loading(true,`กำลังโหลดเสียง... (${done}/${total})`); };
-  const queue=list.slice(), CONC=3;   // โหลดพร้อมกันทีละ 3 (ลอง CDN ก่อน ถ้าไม่ได้ค่อยผ่านเซิร์ฟเวอร์)
-  async function worker(){ while(queue.length){ const w=queue.shift();
-    await preloadOneWordAudio(w.audioUrl); bump(); } }
-  await Promise.all(Array.from({length:Math.min(CONC,total)},()=>worker()));
-}
-function b64ToBlob(b64, mime){
-  const bin=atob(b64||""); const len=bin.length; const bytes=new Uint8Array(len);
-  for(let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
-  return new Blob([bytes],{type:mime||"audio/webm"});
-}
-function setWordBlob(audioUrl,blob){
-  const url=URL.createObjectURL(blob); wordBlobUrls[audioUrl]=url;
-  const el=new Audio(url); el.preload="auto"; wordAudioEls[audioUrl]=el;
-}
-// โหลดเสียงครู 1 คำ มาเก็บเป็น blob ในเครื่อง -> เล่นทันที
-async function preloadOneWordAudio(audioUrl){
-  if(wordBlobUrls[audioUrl] || wordAudioEls[audioUrl]) return;   // มีแล้ว ไม่ต้องโหลดซ้ำ
-  // 1) ลองดึงจาก CDN ก่อน (เร็ว ไม่ผ่านเซิร์ฟเวอร์)
-  try{
-    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),6000);
-    const res=await fetch(directDriveUrl(audioUrl),{signal:ctrl.signal}); clearTimeout(t);
-    if(res.ok){ const blob=await res.blob(); if(blob && blob.size>200){ setWordBlob(audioUrl,blob); return; } }
-  }catch(_){}
-  // 2) CDN อ่านไม่ได้ (เช่น CORS) -> ดึงผ่าน getAudio (base64) ของเราแล้วทำ blob (ชัวร์ เล่นทันที)
-  try{
-    let fileId=audioUrl;
-    if(/^https?:/i.test(audioUrl)){ const m=audioUrl.match(/[-\w]{25,}/); fileId=m?m[0]:audioUrl; }
-    const r=await api("getAudio",{id:fileId});
-    setWordBlob(audioUrl, b64ToBlob(r.base64, r.mimeType));
-  }catch(_){ /* ยังไม่ได้ -> getWordAudioEl จะสตรีม/ fallback ตอนเล่นเอง */ }
+/* ⚡ ข้อมูลบทเรียนของนักเรียนในคำขอเดียว (คำ + คำที่อ่านแล้ว + ผลประเมิน)
+   ถ้าหลังบ้านยังเป็นเวอร์ชันเก่า จะถอยไปใช้ 3 คำขอแบบเดิมให้อัตโนมัติ */
+async function lessonData(lessonId){
+  try{ const d=await api("openLessonData",{lessonId});
+    if(d && d.words) _cache.words[lessonId]=d.words;
+    return d; }
+  catch(err){
+    if(!isUnknownAction(err)) throw err;
+    const [words,sp,test]=await Promise.all([ cachedWords(lessonId),
+      api("getLessonProgress",{lessonId}).catch(()=>null), api("getMyLessonTest",{lessonId}).catch(()=>null) ]);
+    return { words, readIds:(sp&&sp.readIds)||null, test:test||{status:"",grade:"",comment:""} };
+  }
 }
 
 async function openLesson(lesson){ currentLessonId=lesson.id;
   loading(true,"กรุณารอสักครู่ กำลังโหลดบทเรียน...");
   try{
     const isStudent = state.user.role==="student";
-    // โหลด "คำ" + "ความก้าวหน้า" ขนานกัน (ไม่พึ่งพากัน)
-    const [words, sp] = await Promise.all([
-      cachedWords(lesson.id),
-      isStudent ? api("getLessonProgress",{lessonId:lesson.id}).catch(()=>null) : Promise.resolve(null)
-    ]);
-    currentWords=words;
+    // นักเรียน: 1 คำขอได้ครบ · ครูดูตัวอย่าง: ใช้คำที่จำไว้
+    const d = isStudent ? await lessonData(lesson.id) : { words: await cachedWords(lesson.id), readIds:null, test:null };
+    currentWords=d.words||[];
     const valid=new Set(currentWords.map(w=>w.id));
-    if(isStudent && sp && sp.readIds!=null){
-      readSet=new Set((sp.readIds||[]).filter(id=>valid.has(id)));
+    if(isStudent && Array.isArray(d.readIds)){
+      readSet=new Set(d.readIds.filter(id=>valid.has(id)));
     }else{
       const saved=JSON.parse(localStorage.getItem("progress:"+lesson.id)||"[]");
       readSet=new Set(saved.filter(id=>valid.has(id)));
@@ -1320,27 +1382,25 @@ async function openLesson(lesson){ currentLessonId=lesson.id;
     localStorage.setItem("progress:"+lesson.id,JSON.stringify([...readSet]));
     $("lesson-title").textContent=lesson.title;
     renderWords(); updateProgress();
-    await preloadAudio(currentWords);    // โหลดเสียงครูให้ครบก่อน แล้วค่อยแสดงหน้า (นักเรียนกดแล้วได้ยินทันที)
+    renderLessonGrade(d.test);           // ผลประเมิน/คำแนะนำครู มาพร้อมกันแล้ว ไม่ต้องยิงเพิ่ม
+    await ensureLessonAudio(lesson.id,currentWords);   // เตรียมเสียงครูให้ครบก่อนแสดงหน้า (กดแล้วดังทันที)
     show("view-lesson");
     loading(false);
-    showLessonGrade(lesson.id);          // โชว์ผลคะแนนกระพริบทีหลัง (ไม่ block การแสดงหน้า)
   }catch(err){ loading(false); toast(err.message,"error"); } }
 
-/* ดึงผลทดสอบของบทนี้มาแสดงเป็นป้ายกระพริบ (เฉพาะนักเรียน และเมื่อครูประเมินแล้ว) */
-async function showLessonGrade(lessonId){
+/* แสดงผลทดสอบของบทนี้เป็นป้ายกระพริบ (เฉพาะนักเรียน และเมื่อครูประเมินแล้ว) */
+function renderLessonGrade(t){
   const banner=$("lesson-grade"); banner.className="grade-banner"; banner.style.display="none";
   const note=$("lesson-comment"); note.className="teacher-note"; note.innerHTML="";
-  if(state.user.role!=="student") return;
-  try{ const t=await api("getMyLessonTest",{lessonId});
-    if(t && t.status==="graded" && t.grade){
-      banner.className="grade-banner show "+gradeClass(t.grade);
-      banner.textContent="🌟 คุณครูประเมินการอ่านของหนู: "+t.grade+" 🌟";
-    }
-    if(t && t.comment){
-      note.className="teacher-note show";
-      note.innerHTML="💬 <b>คำแนะนำจากคุณครู:</b> "+esc(t.comment);
-    }
-  }catch(_){}
+  if(state.user.role!=="student" || !t) return;
+  if(t.status==="graded" && t.grade){
+    banner.className="grade-banner show "+gradeClass(t.grade);
+    banner.textContent="🌟 คุณครูประเมินการอ่านของหนู: "+t.grade+" 🌟";
+  }
+  if(t.comment){
+    note.className="teacher-note show";
+    note.innerHTML="💬 <b>คำแนะนำจากคุณครู:</b> "+esc(t.comment);
+  }
 }
 function gradeClass(g){ return {"น้อย":"g-low","พอใช้":"g-fair","ดี":"g-good","ดีมาก":"g-vgood","ดีเยี่ยม":"g-excel"}[g]||"g-good"; }
 
@@ -1377,12 +1437,15 @@ function saveProgressToServer(){ if(state.user.role!=="student") return;
   _progPending={ lessonId:currentLessonId, readCount:readSet.size,
     totalCount:currentWords.length, readIds:[...readSet] };
   try{ localStorage.setItem("progress:"+currentLessonId, JSON.stringify([...readSet])); }catch(_){}
+  patchBootProgress(currentLessonId,[...readSet],currentWords.length);   // ⚡ อัปเดตข้อมูลที่จำไว้ทันที
   clearTimeout(_progTimer);
   _progTimer=setTimeout(flushProgress, 2500);
 }
 function flushProgress(){ clearTimeout(_progTimer); _progTimer=null;
   if(!_progPending) return; const payload=_progPending; _progPending=null;
-  api("saveProgress",payload).catch(()=>{ _progPending=payload; });   // พลาด -> คงค้างไว้ลองใหม่ทีหลัง
+  api("saveProgress",Object.assign({__opt:{quiet:true}},payload))      // บันทึกเบื้องหลัง ไม่ต้องเด้งเตือน
+    .catch(()=>{ if(!_progPending) _progPending=payload;                // พลาด -> คงค้างไว้ แล้วลองใหม่ใน 10 วิ
+      if(!_progTimer) _progTimer=setTimeout(flushProgress,10000); });
 }
 // ยิงทันทีเมื่อออกจากหน้า/สลับแอป/ปิด (กันข้อมูลหายถ้าเด็กปิดกลางคัน)
 window.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") flushProgress(); });
@@ -1395,9 +1458,8 @@ let testState={lessons:[],myTests:[]}, testCurrentLesson=null, testWords=[], tes
 async function goTest(){ flushProgress(); show("view-test");
   $("test-lessons-mode").style.display="block"; $("test-detail-mode").style.display="none";
   loading(true,"กำลังโหลดแบบทดสอบ...");
-  try{ const [lessons,myTests,progress]=await Promise.all([
-      cachedLessons(),api("getMyTests"),api("getMyProgress")]);
-    testState={lessons,myTests,progress}; loading(false); renderTestLessons(); }
+  try{ const b=await studentBoot();                 // ⚡ ใช้ข้อมูลรวมชุดเดียว
+    testState={lessons:b.lessons,myTests:b.tests,progress:b.progress}; loading(false); renderTestLessons(); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 function renderTestLessons(){
@@ -1427,9 +1489,9 @@ async function openTestLesson(lesson){ testCurrentLesson=lesson;
   $("test-title").textContent="🎤 "+lesson.title;
   loading(true,"กำลังเปิดแบบทดสอบ...");
   try{
-    const [words,t]=await Promise.all([
-      cachedWords(lesson.id), api("getMyLessonTest",{lessonId:lesson.id})]);
-    testWords=words; testBlobs={}; loading(false);
+    const d=await lessonData(lesson.id);              // ⚡ คำ + สถานะการส่ง ในคำขอเดียว
+    const t=d.test;
+    testWords=d.words||[]; testBlobs={}; loading(false);
     const banner=$("test-grade-banner"); banner.className="grade-banner"; banner.style.display="none";
     const note=$("test-comment"); note.className="teacher-note"; note.innerHTML="";
     const warn=$("test-mic-warning"); warn.style.display="none";
@@ -1517,19 +1579,25 @@ $("test-submit").addEventListener("click",async()=>{
   if(!confirm("ส่งแบบทดสอบการอ่านบทนี้ให้คุณครู?\nส่งแล้วจะแก้ไขไม่ได้ และทำได้เพียงครั้งเดียว")) return;
   loading(true,"กำลังเตรียมส่ง...");
   try{
-    // เคลียร์เสียงเดิมของบทนี้ครั้งเดียว (อ่านชีตครั้งเดียว) แล้วต่อท้ายทีละคำแบบไม่ต้องอ่านซ้ำ
-    await api("clearMyLessonRecordings",{lessonId:testCurrentLesson.id});
-    let done=0;
-    loading(true,`กำลังส่งเสียงอ่าน... (0/${total})`);
-    // ส่งแบบขนานจำกัดคิว (ทีละ 3) — เร็วกว่ารอทีละคำ
-    const queue=testWords.slice(), CONC=3;
-    async function worker(){ while(queue.length){ const w=queue.shift(); const t=testBlobs[w.id]; if(!t) continue;
-      const b64=await blobToBase64(t.blob);
-      await api("submitRecording",{lessonId:testCurrentLesson.id,wordId:w.id,
-        wordText:w.text,dataBase64:b64,mimeType:t.mime,name:"test_"+w.id,skipDedup:true});
-      done++; loading(true,`กำลังส่งเสียงอ่าน... (${done}/${total})`); } }
-    await Promise.all(Array.from({length:Math.min(CONC,total)},()=>worker()));
-    await api("submitTest",{lessonId:testCurrentLesson.id});
+    // แปลงเสียงทุกคำเป็นข้อมูลส่งในเครื่องก่อน
+    const items=[];
+    for(const w of testWords){ const t=testBlobs[w.id]; if(!t) continue;
+      items.push({wordId:w.id,wordText:w.text,dataBase64:await blobToBase64(t.blob),mimeType:t.mime}); }
+    loading(true,`กำลังส่งเสียงอ่าน ${items.length} คำ... (อย่าเพิ่งปิดหน้านี้นะ)`);
+    try{
+      // ⚡ ส่งทั้งบทในคำขอเดียว (เดิม 12 คำขอ) — ฝั่งเซิร์ฟเวอร์ลบเสียงเดิมให้ก่อน จึงไม่มีทางซ้ำ
+      await api("submitTestBatch",{lessonId:testCurrentLesson.id,items,__opt:{timeout:120000,quiet:true}});
+    }catch(err){
+      if(!isUnknownAction(err)) throw err;
+      // หลังบ้านยังเป็นเวอร์ชันเก่า -> ส่งแบบเดิม
+      await api("clearMyLessonRecordings",{lessonId:testCurrentLesson.id});
+      let done=0; const queue=items.slice();
+      async function worker(){ while(queue.length){ const it=queue.shift();
+        await api("submitRecording",Object.assign({lessonId:testCurrentLesson.id,name:"test_"+it.wordId,skipDedup:true},it));
+        done++; loading(true,`กำลังส่งเสียงอ่าน... (${done}/${items.length})`); } }
+      await Promise.all([worker(),worker()]);
+      await api("submitTest",{lessonId:testCurrentLesson.id});
+    }
     loading(false); testBlobs={};
     celebrate(); toast("ส่งแบบทดสอบให้คุณครูแล้ว 🎤","success");
     openTestLesson(testCurrentLesson);   // โหลดใหม่ -> เข้าสู่สถานะล็อก
@@ -1543,9 +1611,8 @@ async function goWriting(){ if(state.user.role!=="student") return goLessons(); 
   show("view-writing");
   $("wr-quiz-mode").style.display="none"; $("wr-lessons-mode").style.display="block";
   loading(true,"กำลังโหลดบทเรียน...");
-  try{ const [lessons,mine,myTests]=await Promise.all([
-      cachedLessons(),api("getMyWriting"),api("getMyTests")]);
-    loading(false); renderWritingLessons(lessons,mine,myTests); }
+  try{ const b=await studentBoot();                 // ⚡ ใช้ข้อมูลรวมชุดเดียว
+    loading(false); renderWritingLessons(b.lessons,b.writing,b.tests); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 function renderWritingLessons(lessons,mine,myTests){
@@ -1575,7 +1642,8 @@ async function openWritingLesson(lesson){
   try{ const words=await cachedWords(lesson.id);
     if(!words.length){ loading(false); return toast("บทนี้ยังไม่มีคำให้ทดสอบ","error"); }
     wrState={lesson,words:shuffleArr(words.slice()),idx:0,score:0,mode:"type",strokes:[],results:[]};
-    // ไม่โหลดเสียงรวดเดียว — จะโหลดทีละข้อตอนเล่น (เบากว่าเมื่อเด็กเข้าพร้อมกันหลายคน)
+    // ⚡ เสียงครูส่วนใหญ่อยู่ในเครื่องแล้ว (จากตอนอ่านบทเรียน) -> ไม่ต้องโหลดใหม่ ที่ขาดโหลดคำขอเดียว
+    await ensureLessonAudio(lesson.id,words);
     loading(false);
     $("wr-lessons-mode").style.display="none"; $("wr-quiz-mode").style.display="block";
     $("wr-title").textContent="✍️ "+lesson.title;
@@ -1833,9 +1901,8 @@ function renderWrsStudent(username,rec){
 
 async function goBadges(){ if(state.user.role!=="student") return goLessons();
   show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
-  try{ const [progress,tests,config]=await Promise.all([
-      api("getMyProgress"),api("getMyTests"),api("getBadgeConfig")]);
-    loading(false); renderBadges(computeBadges(progress,tests,config)); }
+  try{ const b=await studentBoot();                 // ⚡ ใช้ข้อมูลรวมชุดเดียว
+    loading(false); renderBadges(computeBadges(b.progress,b.tests,b.badges)); }
   catch(err){ loading(false); toast(err.message,"error"); } }
 
 const GRADE_RANK={"น้อย":1,"พอใช้":2,"ดี":3,"ดีมาก":4,"ดีเยี่ยม":5};
@@ -2276,7 +2343,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v19";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v20";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
