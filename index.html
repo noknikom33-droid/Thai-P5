@@ -839,7 +839,7 @@ textarea{resize:vertical;min-height:150px}
 
 <script>
 /* ⭐ URL ของ API (Google Apps Script) — แก้ตรงนี้ถ้า URL เปลี่ยน */
-const API_URL = "https://script.google.com/macros/s/AKfycbw9RGAuhy_4HSfP35_LJ6LKDQAze_QKe_edspr_Yp4gNlwQB5rvmQH3z-hnMKYqt9i8QA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxoIO9xMFtAlWT4zTQiurDyNUxnLisMKcpy57NFWIp1sgVVSKZhJ4dLZJe0L_T6FCJJ/exec";
 
 let state = { user: null, token: null };
 let adminLessonId = null, pendingCoverUrl = "";
@@ -2343,7 +2343,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v20";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v21";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
