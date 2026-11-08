@@ -868,12 +868,11 @@ async function api(action, params = {}, _attempt = 0) {
   try{
     const ctrl = new AbortController();
     const timer = setTimeout(()=>ctrl.abort(), opt.timeout || 25000);   // ปกติ 25 วิ (ส่งแบบทดสอบให้นานกว่า)
-    // ถ้ารอเกิน 8 วิ แจ้งผู้ใช้ว่าเซิร์ฟเวอร์ช้ากว่าปกติ (ครั้งแรกเท่านั้น)
-    const slow = opt.quiet ? null : setTimeout(()=>{ if(_attempt===0 && typeof toast==="function") toast("เซิร์ฟเวอร์ช้ากว่าปกติ กำลังรอสักครู่...","error"); }, 8000);
+    // (เอาข้อความเตือน "เซิร์ฟเวอร์ช้ากว่าปกติ" ออกแล้ว — รอเงียบ ๆ มีแค่หมุนกำลังโหลด)
     try{
       res = await fetch(API_URL, { method:"POST", signal:ctrl.signal, body: JSON.stringify(body) });
       data = await res.json();       // ถ้าเซิร์ฟเวอร์ล้น Google จะตอบเป็นหน้า HTML -> อ่าน JSON ไม่ได้ -> ไปลองใหม่
-    } finally { clearTimeout(timer); if(slow) clearTimeout(slow); }
+    } finally { clearTimeout(timer); }
   }catch(err){
     _apiRelease();
     if (_attempt < RETRIES){ await sleep(retryDelay(_attempt)); return api(action, params, _attempt+1); }
@@ -2343,7 +2342,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v21";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v22";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
