@@ -4,7 +4,8 @@
             เพราะข้อมูลต้องสด ๆ — ออฟไลน์จะเปิดแอปได้ แต่ข้อมูลสดต้องมีเน็ต
    วิธีใช้: วางไฟล์นี้ไว้โฟลเดอร์เดียวกับ index.html ในรีโป GitHub
    อยากอัปเดตแคชเวอร์ชันใหม่: เปลี่ยนเลข CACHE ด้านล่าง (เช่น v3 -> v4) */
-const CACHE = 'arnsanook-p5-v19';
+const CACHE = 'arnsanook-p5-v22';
+const AUDIO_STORE = 'arnsanook-audio-v1';   // คลังเสียงครูในเครื่อง — ห้ามลบตอนอัปเดตแอป
 const SHELL = ['./', './index.html'];
 
 self.addEventListener('install', (e) => {
@@ -23,7 +24,7 @@ self.addEventListener('message', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE && k !== AUDIO_STORE).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -38,13 +39,21 @@ self.addEventListener('fetch', (e) => {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;   // ข้าม blob:/data:
   if (url.hostname.indexOf('script.google.com') >= 0) return;          // ไม่แคช API
 
-  // เปิดหน้าเว็บ (navigation): เอาเน็ตก่อน ถ้าไม่ได้ค่อยใช้หน้าที่แคชไว้
+  // เปิดหน้าเว็บ (navigation): เอาเน็ตก่อน (ได้โค้ดล่าสุด) แต่ "รอไม่เกิน 4 วิ"
+  // ถ้าเน็ตช้ากว่านั้น เปิดหน้าที่แคชไว้ทันที (ไม่ให้เด็กนั่งดูจอขาว) แล้วอัปเดตแคชเบื้องหลัง
   if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req)
-        .then((r) => { const cp = r.clone(); caches.open(CACHE).then((c) => c.put('./index.html', cp)).catch(() => {}); return r; })
-        .catch(() => caches.match('./index.html').then((m) => m || caches.match('./')))
-    );
+    e.respondWith((async () => {
+      const net = fetch(req).then((r) => {
+        if (r && r.ok) { const cp = r.clone(); caches.open(CACHE).then((c) => c.put('./index.html', cp)).catch(() => {}); }
+        return r;
+      });
+      const cached = await caches.match('./index.html', { cacheName: CACHE }).catch(() => null)
+                  || await caches.match('./', { cacheName: CACHE }).catch(() => null);
+      if (!cached) return net;                              // ยังไม่เคยแคช -> รอเน็ตตามปกติ
+      const timeout = new Promise((res) => setTimeout(() => res(null), 4000));
+      const r = await Promise.race([net.catch(() => null), timeout]);
+      return r || cached;
+    })());
     return;
   }
 
