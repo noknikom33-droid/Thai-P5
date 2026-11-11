@@ -330,6 +330,130 @@ textarea{resize:vertical;min-height:150px}
 @keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:0}}
 @media(max-width:600px){.appbar .brand{font-size:1.3rem}.word-text{font-size:2.2rem}.lesson-grid{grid-template-columns:1fr 1fr;gap:12px}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition:none!important}}
+/* ============================================================
+   🎮 เกม — ตีตัวตุ่น
+   ============================================================ */
+.game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;margin-top:18px}
+.game-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;text-align:left;padding:0;transition:transform .15s,box-shadow .15s}
+.game-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h)}
+.game-card:active{transform:scale(.99)}
+.game-card .art{height:170px;background:linear-gradient(180deg,#bfe9ff 0%,#dff5ff 45%,#8fd16a 46%,#5fb548 100%);position:relative;overflow:hidden}
+.game-card .body{padding:16px 18px}
+.game-card .body h3{font-size:1.4rem}
+.game-card .body p{margin:4px 0 0;color:var(--ink-soft)}
+.game-card.soon{opacity:.6;cursor:default}
+.game-card.soon .art{background:linear-gradient(160deg,#eef1fa,#e3e7f5);display:flex;align-items:center;justify-content:center;font-size:3.4rem}
+.game-card.soon:hover{transform:none;box-shadow:var(--shadow)}
+.gm-demo{position:absolute;left:50%;bottom:10px;width:150px;height:140px;transform:translateX(-50%)}
+.gm-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.gm-two{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;margin-top:14px;align-items:start}
+@media (max-width:760px){.gm-two{grid-template-columns:1fr}}
+.gm-start-card{text-align:center}
+.gm-start-card .gm-demo{position:relative;left:auto;bottom:auto;transform:none;margin:0 auto 6px}
+.gm-rules{list-style:none;padding:0;margin:14px auto 18px;max-width:340px;text-align:left;display:grid;gap:8px}
+.gm-rules li{background:#f7f9ff;border-radius:12px;padding:9px 12px;font-size:1.02rem}
+.gm-start-btn{font-size:1.35rem;padding:16px 40px;min-height:60px}
+.gm-board-card h3{color:var(--teal-dark);margin-bottom:10px}
+
+/* กระดานอันดับ */
+.gm-lb{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.gm-lb li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;background:#f7f9ff}
+.gm-lb li.top1{background:#fff6d6}.gm-lb li.top2{background:#f1f3f8}.gm-lb li.top3{background:#fdeee3}
+.gm-lb li.me{box-shadow:inset 0 0 0 2px var(--teal);background:#e7fbfb}
+.gm-lb .rk{width:34px;text-align:center;font-weight:700;font-size:1.15rem;flex:0 0 auto}
+.gm-lb .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-lb .sc{font-weight:800;color:var(--teal-dark);font-family:"Baloo Thai 2",cursive;font-size:1.1rem}
+.gm-lb-sep{text-align:center;color:var(--ink-soft);line-height:1;padding:2px 0}
+.gm-lb-foot{color:var(--ink-soft);font-size:.9rem;margin-top:8px}
+.gm-lb-empty{text-align:center;padding:18px 6px}
+
+/* แถบสถานะระหว่างเล่น */
+.gm-hud{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;max-width:620px;margin:0 auto 10px}
+.gm-stat{background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:6px 14px;text-align:center;min-width:76px}
+.gm-stat .lbl{display:block;font-size:.8rem;color:var(--ink-soft)}
+.gm-stat b{font-family:"Baloo Thai 2",cursive;font-size:1.5rem;line-height:1.1;color:var(--ink)}
+.gm-stat.combo b{color:#e8590c}
+.gm-timer{display:flex;align-items:center;gap:8px}
+.gm-timer-bar{flex:1;height:14px;background:#e6eaf5;border-radius:999px;overflow:hidden}
+.gm-timer-bar span{display:block;height:100%;width:100%;background:linear-gradient(90deg,#2fbf71,#16a3a3);border-radius:999px;transition:width .1s linear}
+.gm-timer b{font-family:"Baloo Thai 2",cursive;font-size:1.3rem;min-width:30px;text-align:right}
+.gm-timer.low .gm-timer-bar span{background:linear-gradient(90deg,#ff5d5d,#ff8a3d)}
+.gm-timer.low b{color:var(--danger);animation:gmPulse .6s infinite}
+.gm-bar2{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:620px;margin:0 auto 10px}
+.gm-listen{font-size:1.15rem}
+
+/* สนามเกม */
+.gm-field{position:relative;max-width:620px;margin:0 auto;padding:16px 12px 12px;border-radius:24px;
+  background:radial-gradient(120% 80% at 50% 0%,#a6e07f 0%,#6cc24a 55%,#4fa83a 100%);box-shadow:var(--shadow);
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:hidden}
+.gm-holes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gm-hole{position:relative;aspect-ratio:1/1.02}
+.gm-mound{position:absolute;left:3%;right:3%;bottom:0;height:30%;border-radius:50%;background:radial-gradient(ellipse at 50% 30%,#b9824a,#8a5a2e)}
+.gm-pit{position:absolute;left:12%;right:12%;bottom:7%;height:19%;border-radius:50%;background:radial-gradient(ellipse at 50% 70%,#2a170b 40%,#4a2b15 100%)}
+.gm-clip{position:absolute;left:0;right:0;top:0;bottom:16.5%;overflow:hidden}
+
+/* ตัวตุ่น (วาดด้วย CSS) */
+.gm-mole{position:absolute;left:50%;bottom:0;width:64%;height:80%;padding:0;background:none;
+  transform:translate(-50%,112%);transition:transform .2s cubic-bezier(.2,1.25,.45,1);touch-action:manipulation}
+.gm-mole.up{transform:translate(-50%,4%)}
+.gm-mole.down{transition:transform .16s ease-in}
+.gm-body{position:absolute;inset:0;border-radius:50% 50% 42% 42%/58% 58% 42% 42%;
+  background:radial-gradient(circle at 35% 25%,#a77447 0%,#8a5a32 45%,#6b4223 100%);box-shadow:inset 0 -8px 0 rgba(0,0,0,.12)}
+.gm-belly{position:absolute;left:22%;right:22%;top:46%;bottom:-6%;border-radius:50%;background:#d9b48a}
+.gm-eye{position:absolute;top:24%;width:12%;aspect-ratio:1;border-radius:50%;background:#1d130c}
+.gm-eye::after{content:"";position:absolute;width:38%;aspect-ratio:1;border-radius:50%;background:#fff;top:16%;left:18%}
+.gm-eye.l{left:28%}.gm-eye.r{right:28%}
+.gm-cheek{position:absolute;top:37%;width:13%;height:8%;border-radius:50%;background:rgba(255,128,150,.55)}
+.gm-cheek.l{left:15%}.gm-cheek.r{right:15%}
+.gm-nose{position:absolute;left:50%;top:34%;width:20%;height:11%;transform:translateX(-50%);border-radius:50%;background:#ff8aa1;box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
+.gm-teeth{position:absolute;left:50%;top:44%;width:14%;height:8%;transform:translateX(-50%);background:#fff;border-radius:0 0 4px 4px;
+  background-image:linear-gradient(90deg,transparent 46%,#d8d8d8 46%,#d8d8d8 54%,transparent 54%)}
+.gm-dizzy{position:absolute;left:50%;top:-14%;transform:translateX(-50%);font-size:1.3em;display:none;animation:gmSpin .6s linear infinite}
+.gm-sign{position:absolute;left:50%;top:56%;transform:translateX(-50%);max-width:150%;background:#fff;border:3px solid #8a5a2e;
+  border-radius:12px;padding:3px 9px;font-family:"Sarabun",sans-serif;font-weight:700;color:#283149;white-space:nowrap;
+  font-size:clamp(.82rem,4.3vw,1.35rem);line-height:1.35;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.gm-sign.s2{font-size:clamp(.74rem,3.6vw,1.15rem)}
+.gm-sign.s3{font-size:clamp(.66rem,3.1vw,1rem);padding:3px 6px}
+.gm-mole.ok .gm-sign{background:#d8f7e3;border-color:#2e9e6b;color:#1d6b46}
+.gm-mole.ok .gm-dizzy{display:block}
+.gm-mole.ok .gm-eye{background:none}
+.gm-mole.ok .gm-eye::after{content:"✕";background:none;color:#1d130c;width:auto;top:-30%;left:5%;font-size:.9em;font-weight:900}
+.gm-mole.bad .gm-sign{background:#ffe1e1;border-color:#d23a3a;color:#a02222}
+.gm-mole.bad{animation:gmShake .35s}
+.gm-mole.reveal .gm-sign{background:#d8f7e3;border-color:#2e9e6b;animation:gmGlow .7s ease-in-out infinite alternate}
+
+/* เอฟเฟกต์ */
+.gm-hammer{position:absolute;font-size:2.6rem;pointer-events:none;z-index:6;transform-origin:80% 80%;animation:gmBonk .28s ease-out forwards}
+.gm-float{position:absolute;pointer-events:none;z-index:7;font-family:"Baloo Thai 2",cursive;font-weight:800;font-size:1.6rem;
+  transform:translateX(-50%);animation:gmFloat .9s ease-out forwards;text-shadow:0 2px 0 #fff,0 0 6px #fff}
+.gm-float.ok{color:#1d8a52}.gm-float.bad{color:#d23a3a}
+.gm-msg{position:absolute;left:50%;top:8px;transform:translateX(-50%);background:rgba(255,255,255,.95);border-radius:999px;
+  padding:6px 16px;font-weight:700;box-shadow:var(--shadow);white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transition:opacity .2s;pointer-events:none;z-index:8}
+.gm-msg.show{opacity:1}
+.gm-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  background:rgba(40,49,73,.35);z-index:9;color:#fff;text-align:center;padding:16px}
+.gm-overlay.show{display:flex}
+.gm-count{font-family:"Baloo Thai 2",cursive;font-size:5rem;font-weight:800;text-shadow:0 4px 0 rgba(0,0,0,.25);animation:gmPop .6s ease-out}
+
+/* หน้าจบเกม */
+.gm-result-card{text-align:center}
+.gm-trophy{font-size:4rem;line-height:1}
+.gm-big-score{font-family:"Baloo Thai 2",cursive;font-size:1.4rem;margin:6px 0}
+.gm-big-score span{font-size:3.2rem;color:var(--teal-dark);font-weight:800}
+.gm-newbest{display:inline-block;background:#fff6d6;color:#8a5a00;border-radius:999px;padding:6px 16px;font-weight:700;margin:4px 0;animation:gmPop .5s}
+.gm-res-stats{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
+.gm-res-stats span{background:#f7f9ff;border-radius:999px;padding:6px 14px}
+.gm-res-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+@keyframes gmBonk{0%{transform:translate(-20%,-70%) rotate(-50deg);opacity:1}60%{transform:translate(-20%,-70%) rotate(15deg);opacity:1}100%{transform:translate(-20%,-70%) rotate(5deg);opacity:0}}
+@keyframes gmFloat{0%{opacity:0;margin-top:0}15%{opacity:1}100%{opacity:0;margin-top:-50px}}
+@keyframes gmShake{0%,100%{margin-left:0}25%{margin-left:-6px}75%{margin-left:6px}}
+@keyframes gmGlow{from{box-shadow:0 0 0 0 rgba(46,158,107,.6)}to{box-shadow:0 0 0 8px rgba(46,158,107,0)}}
+@keyframes gmSpin{from{transform:translateX(-50%) rotate(0)}to{transform:translateX(-50%) rotate(360deg)}}
+@keyframes gmPop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1)}}
+@keyframes gmPulse{50%{transform:scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.gm-mole{transition-duration:.05s}.gm-hammer,.gm-dizzy,.gm-mole.reveal .gm-sign{animation:none}}
 </style>
 </head>
 <body>
@@ -411,6 +535,100 @@ textarea{resize:vertical;min-height:150px}
   </div>
 </section>
 
+<!-- 🎮 หน้าเกม (นักเรียน + ครูเล่นทดลอง) -->
+<section id="view-games" class="view">
+  <div class="container">
+    <!-- 1) เลือกเกม (อนาคตเพิ่มการ์ดเกมใหม่ตรงนี้) -->
+    <div id="gm-pick">
+      <h2 class="display" style="margin-bottom:6px">🎮 เกมฝึกภาษา</h2>
+      <p class="muted">เลือกเกมที่อยากเล่น แล้วเลือกบทเรียน คำในเกมมาจากบทเรียนที่คุณครูเพิ่มไว้</p>
+      <div class="game-grid">
+        <button class="game-card" id="gm-card-whack" type="button">
+          <div class="art"><div class="gm-demo" data-demo></div></div>
+          <div class="body"><h3>🔨 ตีตัวตุ่น</h3><p>ฟังเสียงคำ แล้วรีบตีตัวตุ่นที่ถือคำนั้นให้ไวที่สุด!</p></div>
+        </button>
+        <div class="game-card soon" aria-disabled="true">
+          <div class="art">🎲</div>
+          <div class="body"><h3>เกมใหม่</h3><p>เร็ว ๆ นี้...</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2) เลือกบทเรียน -->
+    <div id="gm-lessons" style="display:none">
+      <button class="mini" id="gm-back-pick" style="margin-bottom:14px">⬅️ กลับไปเลือกเกม</button>
+      <h2 class="display" style="margin-bottom:6px">🔨 ตีตัวตุ่น · เลือกบทเรียน</h2>
+      <p class="muted">แต่ละบทมีกระดานอันดับของตัวเอง ทำคะแนนให้ติดอันดับนะ!</p>
+      <div id="gm-lesson-grid" class="lesson-grid"></div>
+      <div id="gm-lessons-empty" class="muted" style="display:none;text-align:center;padding:40px">ยังไม่มีบทเรียน 🐣</div>
+    </div>
+
+    <!-- 3) ก่อนเริ่มเกม -->
+    <div id="gm-intro" style="display:none">
+      <button class="mini" id="gm-back-lessons">⬅️ เลือกบทอื่น</button>
+      <div class="gm-two">
+        <div class="card gm-start-card">
+          <div class="gm-demo" data-demo></div>
+          <h2 class="display" id="gm-intro-title">ตีตัวตุ่น</h2>
+          <ul class="gm-rules">
+            <li>🔊 ฟังเสียงคำให้ดี (กดฟังซ้ำได้)</li>
+            <li>🔨 ตีตัวตุ่นที่ถือคำที่ได้ยิน</li>
+            <li>⭐ ตีถูก +10 · ถูกติดกันได้โบนัส 🔥</li>
+            <li>❌ ตีผิด −5 · มีเวลา 60 วินาที</li>
+          </ul>
+          <button class="btn btn--sun gm-start-btn" id="gm-start" type="button">▶️ เริ่มเล่น</button>
+          <p class="muted" id="gm-teacher-note" style="display:none;margin-top:12px">โหมดครู: เล่นทดลองได้ แต่คะแนนจะไม่ถูกบันทึก</p>
+        </div>
+        <div class="card gm-board-card">
+          <h3>🏆 อันดับคะแนนสูงสุด</h3>
+          <div id="gm-intro-lb"></div>
+          <button class="mini mini--danger" id="gm-reset-lb" style="display:none;margin-top:12px">🗑️ ล้างกระดานคะแนนบทนี้</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4) กำลังเล่น -->
+    <div id="gm-play" style="display:none">
+      <div class="gm-hud">
+        <div class="gm-stat"><span class="lbl">คะแนน</span><b id="gm-score">0</b></div>
+        <div class="gm-timer" id="gm-timer"><div class="gm-timer-bar"><span id="gm-timebar"></span></div><b id="gm-time">60</b></div>
+        <div class="gm-stat combo"><span class="lbl">🔥 ติดกัน</span><b id="gm-combo">0</b></div>
+      </div>
+      <div class="gm-bar2">
+        <button class="btn btn--ghost gm-listen" id="gm-replay" type="button">🔊 ฟังอีกครั้ง</button>
+        <button class="mini" id="gm-quit" type="button">⏹ ออกจากเกม</button>
+      </div>
+      <div class="gm-field" id="gm-field">
+        <div class="gm-holes" id="gm-holes"></div>
+        <div class="gm-msg" id="gm-msg"></div>
+        <div class="gm-overlay" id="gm-overlay"></div>
+      </div>
+    </div>
+
+    <!-- 5) จบเกม -->
+    <div id="gm-result" style="display:none">
+      <div class="gm-two">
+        <div class="card gm-result-card">
+          <div class="gm-trophy" id="gm-res-icon">🏆</div>
+          <h2 class="display">หมดเวลา!</h2>
+          <div class="gm-big-score"><span id="gm-res-score">0</span> คะแนน</div>
+          <div id="gm-res-badge"></div>
+          <div class="gm-res-stats" id="gm-res-stats"></div>
+          <div class="gm-res-actions">
+            <button class="btn btn--sun" id="gm-again" type="button">🔁 เล่นอีกครั้ง</button>
+            <button class="btn btn--ghost" id="gm-to-lessons" type="button">📋 เลือกบทอื่น</button>
+          </div>
+        </div>
+        <div class="card gm-board-card">
+          <h3>🏆 อันดับคะแนนสูงสุด</h3>
+          <div id="gm-res-lb"></div>
+        </div>
+      </div>
+    </div>
+    <p class="app-credit">พัฒนาโดย <strong>ครูศิริพงษ์ ธิวรรณ</strong> · โรงเรียนนิคมสร้างตนเอง 3</p>
+  </div>
+</section>
+
 <!-- หน้านักเรียน: วิธีใช้งาน -->
 <section id="view-help" class="view">
   <div class="container">
@@ -427,6 +645,8 @@ textarea{resize:vertical;min-height:150px}
         <h3>ส่งให้คุณครู</h3><p>พออัดครบทุกคำ ปุ่ม "ส่งให้คุณครู" จะขึ้นมา กดส่งได้เลย — แต่ละบทส่งได้ครั้งเดียวนะ</p></div></div>
       <div class="help-step"><div class="ic">🌟</div><div class="tx"><div class="lbl">ขั้นที่ 5</div>
         <h3>ดูผลและคำแนะนำ</h3><p>เมื่อคุณครูตรวจแล้ว จะมีดาวกระพริบบอกคะแนน และกล่องคำแนะนำจากคุณครูในหน้าบทเรียน</p></div></div>
+      <div class="help-step"><div class="ic">🎮</div><div class="tx"><div class="lbl">เล่นได้ทุกเมื่อ</div>
+        <h3>เล่นเกมตีตัวตุ่น</h3><p>ไปเมนู "เกม" เลือก 🔨 ตีตัวตุ่น แล้วเลือกบท ฟังเสียงคำแล้วรีบตีตัวตุ่นที่ถือคำนั้น ทำคะแนนให้ติดอันดับนะ!</p></div></div>
       <div class="help-step"><div class="ic">🏅</div><div class="tx"><div class="lbl">ขั้นที่ 6</div>
         <h3>เก็บตราสะสม</h3><p>ไปเมนู "ตราสะสม" ดูว่าได้ตราอะไรแล้ว ตั้งใจอ่านและทดสอบให้ครบเพื่อเก็บตราให้หมด!</p></div></div>
     </div>
@@ -693,6 +913,16 @@ textarea{resize:vertical;min-height:150px}
     </div>
 
     <div class="gsec">
+      <h3>🎮 เกมตีตัวตุ่น</h3>
+      <ul>
+        <li>เกมใช้ <b>คำและเสียงครู</b> จากบทเรียนโดยอัตโนมัติ ไม่ต้องตั้งค่าเพิ่ม (บทต้องมีอย่างน้อย 2 คำ)</li>
+        <li>เล่น 60 วินาที ตีถูก +10 (ถูกติดกันได้โบนัส) ตีผิด −5 — ระบบเก็บ <b>คะแนนสูงสุด</b> ของเด็กแต่ละคนต่อบท</li>
+        <li>ครูเล่นทดลองได้ (ไม่บันทึกคะแนน) และกด <b>🗑️ ล้างกระดานคะแนนบทนี้</b> ได้ในหน้าก่อนเริ่มเกม</li>
+        <li>"เริ่มเทอมใหม่" จะล้างกระดานคะแนนเกมด้วย</li>
+      </ul>
+    </div>
+
+    <div class="gsec">
       <h3>6) การตั้งค่าทั่วไป</h3>
       <ul>
         <li>เปลี่ยนรหัสผ่านบัญชีครู</li>
@@ -916,7 +1146,7 @@ async function studentBoot(force){
       api("getMyWriting").catch(()=>[]),api("getBadgeConfig").catch(()=>[])]);
     b={lessons,progress,tests,writing,badges};
   }
-  b.progress=b.progress||[]; b.tests=b.tests||[]; b.writing=b.writing||[];
+  b.progress=b.progress||[]; b.tests=b.tests||[]; b.writing=b.writing||[]; b.games=b.games||[];
   _boot=b; _bootAt=Date.now();
   if(b.lessons) _cache.lessons=b.lessons;
   return b;
@@ -1051,6 +1281,7 @@ $("install-help-close") && $("install-help-close").addEventListener("click", ()=
 const TEACHER_MENU = [
   { go:"dashboard",  label:"📊 แดชบอร์ด" },
   { go:"lessons",    label:"📚 บทเรียน" },
+  { go:"games",      label:"🎮 เกม" },
   { go:"students",   label:"🧒 เพิ่ม / จัดการนักเรียน" },
   { go:"admin",      label:"⚙️ จัดการบทเรียน" },
   { go:"recordings", label:"🎧 เสียงอ่านของนักเรียน" },
@@ -1065,6 +1296,7 @@ const STUDENT_MENU = [
   { go:"lessons", label:"📚 บทเรียน" },
   { go:"test",    label:"🎤 ทดสอบการอ่าน" },
   { go:"writing", label:"✍️ ทดสอบการเขียน" },
+  { go:"games",   label:"🎮 เกม" },
   { go:"badges",  label:"🏅 ตราสะสม" },
   { go:"help",    label:"❓ วิธีใช้งาน" },
   { go:"update",  label:"🔄 อัปเดตแอป" },
@@ -1098,6 +1330,7 @@ function setActiveMenu(go){
 }
 /* เมื่อเลือกเมนู: ไปหน้านั้น แล้วเมนูจะย่อหายไปอัตโนมัติ (closeMenu ถูกเรียกก่อนหน้านี้) */
 function navTo(go){
+  gmStop();                            // ถ้ากำลังเล่นเกมอยู่ ให้หยุดก่อนเปลี่ยนหน้า
   switch(go){
     case "dashboard":  goDashboard();  break;
     case "lessons":    goLessons();    break;
@@ -1105,6 +1338,7 @@ function navTo(go){
     case "writing":    goWriting();    break;
     case "writing-scores": goWritingScores(); break;
     case "badges":     goBadges();     break;
+    case "games":      goGames();      break;
     case "students":   goStudents();   break;
     case "admin":      goAdmin();      break;
     case "recordings": goRecordings(); break;
@@ -1898,6 +2132,286 @@ function renderWrsStudent(username,rec){
     </div>`;
 }
 
+/* ============================================================
+   🎮 เกม: ตีตัวตุ่น
+   - คำ + เสียงครู มาจากบทเรียน (เสียงโหลดเก็บในเครื่องก่อนเริ่ม จึงดังทันที)
+   - เล่น 60 วินาที: ฟังเสียง -> ตีตัวตุ่นที่ถือคำนั้น
+   - จบเกมส่งคะแนน "คำขอเดียว" แล้วได้กระดานอันดับกลับมาพร้อมกัน
+   ============================================================ */
+const GAME_ID="whack", GAME_SECONDS=60, GAME_HOLES=6;
+let gm={ running:false };
+let gmCtx=null;                        // เสียงเอฟเฟกต์ (Web Audio)
+
+function moleHTML(){ return `<div class="gm-body"></div><div class="gm-belly"></div>
+  <span class="gm-eye l"></span><span class="gm-eye r"></span><span class="gm-cheek l"></span><span class="gm-cheek r"></span>
+  <span class="gm-nose"></span><span class="gm-teeth"></span><span class="gm-dizzy">💫</span>
+  <div class="gm-sign"><span class="gm-word"></span></div>`; }
+function holeHTML(i){ return `<div class="gm-hole" data-i="${i}"><div class="gm-mound"></div><div class="gm-pit"></div>
+  <div class="gm-clip"><button type="button" class="gm-mole" tabindex="-1" data-i="${i}">${moleHTML()}</button></div></div>`; }
+function fillDemos(){ document.querySelectorAll("[data-demo]").forEach(d=>{ if(d.childElementCount) return;
+  d.innerHTML=`<div class="gm-hole" style="width:100%;height:100%"><div class="gm-mound"></div><div class="gm-pit"></div>
+    <div class="gm-clip"><div class="gm-mole up">${moleHTML()}</div></div></div>`;
+  d.querySelector(".gm-word").textContent="ตีฉันสิ!"; }); }
+
+function gmShowStep(step){ ["gm-pick","gm-lessons","gm-intro","gm-play","gm-result"].forEach(id=>{ $(id).style.display=(id===step)?"block":"none"; }); window.scrollTo(0,0); }
+
+function goGames(){ gmStop(); show("view-games"); fillDemos(); gmShowStep("gm-pick"); }
+$("gm-card-whack").addEventListener("click",gmGoLessons);
+$("gm-back-pick").addEventListener("click",()=>gmShowStep("gm-pick"));
+$("gm-back-lessons").addEventListener("click",gmGoLessons);
+$("gm-to-lessons").addEventListener("click",gmGoLessons);
+
+async function gmGoLessons(){
+  gmStop(); gmShowStep("gm-lessons");
+  loading(true,"กำลังโหลดบทเรียน...");
+  try{
+    let lessons, bests={};
+    if(isTeacher()) lessons=await cachedLessons();
+    else { const b=await studentBoot(); lessons=b.lessons;
+      (b.games||[]).filter(g=>g.game===GAME_ID).forEach(g=>{ bests[g.lessonId]=g.score; }); }
+    loading(false);
+    const grid=$("gm-lesson-grid"); grid.innerHTML="";
+    $("gm-lessons-empty").style.display=lessons.length?"none":"block";
+    lessons.forEach(l=>{ const card=document.createElement("button"); card.className="lesson-card"; card.type="button";
+      const cover=l.coverUrl
+        ? `<img class="cover" src="${esc(l.coverUrl)}" alt="ปก ${esc(l.title)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cover cover--empty&quot;>🔨</div>'">`
+        : `<div class="cover cover--empty">🔨</div>`;
+      const best=bests[l.id];
+      const meta=best ? `<span class="meta-grade">🏆 คะแนนสูงสุดของหนู: ${best}</span>` : "แตะเพื่อเล่น";
+      card.innerHTML=`${cover}<div class="body"><h3>${esc(l.title)}</h3><div class="meta">${meta}</div></div>`;
+      card.addEventListener("click",()=>gmOpenLesson(l)); grid.appendChild(card); });
+  }catch(err){ loading(false); toast(err.message,"error"); }
+}
+
+async function gmOpenLesson(lesson){
+  loading(true,"กำลังเตรียมเกม...");
+  try{
+    const words=await cachedWords(lesson.id);
+    // คำซ้ำกันในบท -> เก็บไว้คำเดียว (กันตัวตุ่น 2 ตัวถือคำเดียวกัน)
+    const seen=new Set(), uniq=[];
+    (words||[]).forEach(w=>{ const t=String(w.text||"").trim(); if(t && !seen.has(t)){ seen.add(t); uniq.push(w); } });
+    if(uniq.length<2){ loading(false); return toast("บทนี้มีคำน้อยเกินไป ต้องมีอย่างน้อย 2 คำถึงจะเล่นได้","error"); }
+    await ensureLessonAudio(lesson.id,uniq);   // เสียงครูพร้อมในเครื่องก่อนเริ่ม -> ตีแล้วได้ยินทันที
+    loading(false);
+    gm={ running:false, lesson, words:uniq };
+    $("gm-intro-title").textContent="🔨 "+lesson.title;
+    $("gm-teacher-note").style.display=isTeacher()?"block":"none";
+    $("gm-reset-lb").style.display=isTeacher()?"inline-flex":"none";
+    gmShowStep("gm-intro"); fillDemos();
+    gmLoadLeaderboard($("gm-intro-lb"));
+  }catch(err){ loading(false); toast(err.message,"error"); }
+}
+
+/* ----- กระดานอันดับ ----- */
+async function gmLoadLeaderboard(box){
+  box.innerHTML=`<div style="text-align:center;padding:16px"><span class="spinner-sm" style="display:inline-block;vertical-align:middle"></span> <span class="muted">กำลังโหลดอันดับ...</span></div>`;
+  const lessonId=gm.lesson.id;
+  try{ const lb=await api("getGameLeaderboard",{game:GAME_ID,lessonId});
+    if(gm.lesson && gm.lesson.id===lessonId) gmRenderLb(box,lb); }
+  catch(err){ box.innerHTML=`<p class="muted gm-lb-empty">${isUnknownAction(err)?"กระดานคะแนนยังไม่พร้อม (คุณครูต้องอัปเดตระบบหลังบ้านก่อน)":"โหลดอันดับไม่ได้ ลองใหม่ภายหลังนะ"}</p>`; }
+}
+function gmRenderLb(box,lb){
+  if(!lb || !lb.top || !lb.top.length){ box.innerHTML=`<p class="muted gm-lb-empty">ยังไม่มีใครเล่นบทนี้<br>เป็นคนแรกที่ติดอันดับเลย! 🐹</p>`; return; }
+  const medal=r=>r===1?"🥇":r===2?"🥈":r===3?"🥉":r;
+  let html=`<ol class="gm-lb">`+lb.top.map(x=>`<li class="${x.rank<=3?"top"+x.rank:""}${x.me?" me":""}">
+    <span class="rk">${medal(x.rank)}</span><span class="nm">${esc(x.name)}${x.me?" (หนู)":""}</span><span class="sc">${x.score}</span></li>`).join("")+`</ol>`;
+  if(lb.myRank && !lb.top.some(x=>x.me))
+    html+=`<div class="gm-lb-sep">⋮</div><ol class="gm-lb"><li class="me"><span class="rk">${lb.myRank}</span><span class="nm">หนู</span><span class="sc">${lb.myBest}</span></li></ol>`;
+  html+=`<div class="gm-lb-foot">ผู้เล่นทั้งหมด ${lb.players} คน${lb.myBest?` · คะแนนสูงสุดของหนู ${lb.myBest}`:""}</div>`;
+  box.innerHTML=html;
+}
+$("gm-reset-lb").addEventListener("click",async()=>{
+  if(!gm.lesson || !confirm("ล้างกระดานคะแนนของบท \""+gm.lesson.title+"\" ?\nคะแนนของนักเรียนทุกคนในบทนี้จะหายไป")) return;
+  loading(true,"กำลังล้างกระดาน...");
+  try{ await api("resetGameScores",{game:GAME_ID,lessonId:gm.lesson.id}); loading(false);
+    toast("ล้างกระดานคะแนนแล้ว","success"); gmLoadLeaderboard($("gm-intro-lb")); }
+  catch(err){ loading(false); toast(err.message,"error"); } });
+
+/* ----- เสียง ----- */
+// มือถือ (โดยเฉพาะ iPhone) ต้อง "ปลดล็อกเสียง" ตอนผู้ใช้แตะปุ่ม ไม่งั้นเสียงคำในเกมจะไม่ดัง
+function gmUnlockAudio(){
+  try{ const AC=window.AudioContext||window.webkitAudioContext;
+    if(AC){ if(!gmCtx) gmCtx=new AC(); if(gmCtx.state==="suspended") gmCtx.resume(); } }catch(_){}
+  (gm.words||[]).forEach(w=>{ const id=audioIdOf(w.audioUrl), el=id&&wordAudioEls[id]; if(!el) return;
+    try{ el.muted=true; const p=el.play();
+      if(p && p.then) p.then(()=>{ el.pause(); el.currentTime=0; el.muted=false; }).catch(()=>{ el.muted=false; });
+      else { el.pause(); el.muted=false; } }catch(_){ el.muted=false; } });
+  try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); } }catch(_){}
+}
+function gmSfx(type){
+  if(!gmCtx) return;
+  try{ const t=gmCtx.currentTime, o=gmCtx.createOscillator(), g=gmCtx.createGain(); o.connect(g); g.connect(gmCtx.destination);
+    const cfg={ ok:["triangle",620,1240,.16,.18], bad:["square",200,95,.08,.28], tick:["sine",880,880,.1,.09], go:["triangle",660,990,.14,.25], end:["triangle",880,330,.14,.5] }[type];
+    if(!cfg) return;
+    o.type=cfg[0]; o.frequency.setValueAtTime(cfg[1],t); o.frequency.exponentialRampToValueAtTime(cfg[2],t+cfg[4]*.8);
+    g.gain.setValueAtTime(cfg[3],t); g.gain.exponentialRampToValueAtTime(.0001,t+cfg[4]);
+    o.start(t); o.stop(t+cfg[4]+.02);
+  }catch(_){}
+}
+function gmSayTarget(){ if(gm.target) speak(gm.target.text,gm.target.audioUrl); }
+$("gm-replay").addEventListener("click",()=>{ if(gm.running && !gm.paused) gmSayTarget(); });
+
+/* ----- เริ่ม / วนรอบ / จบ ----- */
+$("gm-start").addEventListener("click",gmStart);
+$("gm-again").addEventListener("click",gmStart);
+
+function gmStart(){
+  if(!gm.words) return;
+  gmUnlockAudio();                     // ต้องเรียกทันทีตอนแตะ (ก่อน await ใด ๆ)
+  const holes=$("gm-holes"); holes.innerHTML="";
+  for(let i=0;i<GAME_HOLES;i++) holes.insertAdjacentHTML("beforeend",holeHTML(i));
+  holes.querySelectorAll(".gm-mole").forEach(b=>b.addEventListener("pointerdown",gmOnHit));
+  Object.assign(gm,{ running:true, paused:false, pendingNext:false, score:0, streak:0, bestStreak:0, correct:0, wrong:0, missed:0,
+    timeLeft:GAME_SECONDS*1000, roundId:0, accepting:false, roundRemain:null, slots:{}, target:null, queue:[], startedAt:Date.now() });
+  gmHud(); gmShowStep("gm-play"); gmMsg("");
+  gmCountdown(()=>{ if(!gm.running) return;
+    gm.last=performance.now(); gm.timer=setInterval(gmTick,100); gmNextRound(); });
+}
+function gmCountdown(done){
+  const ov=$("gm-overlay"); ov.className="gm-overlay show";
+  const seq=["3","2","1","เริ่ม!"]; let k=0;
+  const step=()=>{ if(!gm.running){ ov.className="gm-overlay"; return; }
+    if(k>=seq.length){ ov.className="gm-overlay"; ov.innerHTML=""; done(); return; }
+    ov.innerHTML=`<div class="gm-count">${seq[k]}</div>`; gmSfx(k<3?"tick":"go"); k++; setTimeout(step,k<4?650:500); };
+  step();
+}
+function gmWindow(){ return Math.max(3200, 6000-gm.correct*180); }   // เวลาให้ตี: เริ่ม 6 วิ ยิ่งเก่งยิ่งเร็วขึ้น
+function gmPickTarget(){
+  if(!gm.queue.length) gm.queue=shuffleArr(gm.words.slice());
+  let t=gm.queue.shift();
+  if(gm.target && t===gm.target && gm.words.length>1){ gm.queue.push(t); t=gm.queue.shift(); }   // ไม่ให้ซ้ำคำเดิมติดกัน
+  return t;
+}
+function gmMole(i){ return $("gm-holes").querySelector(`.gm-mole[data-i="${i}"]`); }
+function gmHideAll(){ $("gm-holes").querySelectorAll(".gm-mole").forEach(m=>{ m.classList.remove("up","ok","bad","reveal"); m.classList.add("down"); }); }
+function gmNextRound(){
+  if(!gm.running) return;
+  if(gm.paused){ gm.pendingNext=true; return; }
+  gmHideAll(); gmMsg("");
+  gm.accepting=false; gm.roundRemain=null; gm.slots={};
+  const target=gmPickTarget(); gm.target=target;
+  const n=Math.min(gm.words.length, gm.correct>=6?4:3);
+  const others=shuffleArr(gm.words.filter(w=>w!==target)).slice(0,n-1);
+  const set=shuffleArr([target].concat(others));
+  const holes=shuffleArr([0,1,2,3,4,5]).slice(0,n);
+  holes.forEach((h,k)=>{ gm.slots[h]=set[k]; });
+  const rid=++gm.roundId;
+  gmSayTarget();
+  setTimeout(()=>{ if(!gm.running || rid!==gm.roundId) return;
+    holes.forEach((h,k)=>{ const m=gmMole(h), w=gm.slots[h];
+      const sign=m.querySelector(".gm-sign"), len=[...w.text].length;
+      sign.className="gm-sign"+(len>8?" s3":len>5?" s2":"");
+      m.querySelector(".gm-word").textContent=w.text; m.setAttribute("aria-label",w.text);
+      setTimeout(()=>{ if(gm.running && rid===gm.roundId){ m.classList.remove("down"); m.classList.add("up"); } }, k*90); });
+    gm.accepting=true; gm.roundRemain=gmWindow();
+  }, 380);
+}
+function gmOnHit(ev){
+  ev.preventDefault();
+  gmHammer(ev);
+  if(!gm.running || gm.paused || !gm.accepting) return;
+  const h=Number(ev.currentTarget.dataset.i), m=gmMole(h), w=gm.slots[h];
+  if(!w || !m.classList.contains("up")) return;
+  gm.accepting=false; gm.roundRemain=null;
+  const right=(w===gm.target);
+  if(right){
+    gm.streak++; gm.bestStreak=Math.max(gm.bestStreak,gm.streak); gm.correct++;
+    const pts=10+Math.min(gm.streak-1,5)*2; gm.score+=pts;
+    m.classList.add("ok"); gmFloat(h,"+"+pts,"ok"); gmSfx("ok");
+    if(gm.streak>=3) gmMsg("🔥 ถูกติดกัน "+gm.streak+" ครั้ง!");
+  }else{
+    gm.streak=0; gm.wrong++; gm.score=Math.max(0,gm.score-5);
+    m.classList.add("bad"); gmFloat(h,"−5","bad"); gmSfx("bad");
+    gmReveal(); gmMsg("คำที่ถูกคือ “"+gm.target.text+"”");
+    setTimeout(gmSayTarget,350);                       // ฟังคำที่ถูกอีกครั้ง ช่วยจำ
+  }
+  gmHud();
+  setTimeout(gmNextRound, right?650:1700);
+}
+function gmMiss(){
+  gm.accepting=false; gm.streak=0; gm.missed++;
+  gmReveal(); gmMsg("⏰ ช้าไปนิด! คำนี้คือ “"+gm.target.text+"”"); gmSayTarget(); gmHud();
+  setTimeout(gmNextRound,1700);
+}
+function gmReveal(){ Object.keys(gm.slots).forEach(h=>{ if(gm.slots[h]===gm.target) gmMole(h).classList.add("reveal"); }); }
+function gmTick(){
+  if(!gm.running) return;
+  if($("view-games").style.display==="none"){ gmStop(); return; }   // ออกจากหน้าเกมไปแล้ว -> หยุด
+  const now=performance.now(), dt=now-gm.last; gm.last=now;
+  if(gm.paused) return;
+  gm.timeLeft-=dt;
+  if(gm.roundRemain!=null){ gm.roundRemain-=dt; if(gm.roundRemain<=0){ gm.roundRemain=null; gmMiss(); } }
+  const sec=Math.max(0,Math.ceil(gm.timeLeft/1000));
+  $("gm-time").textContent=sec;
+  $("gm-timebar").style.width=Math.max(0,gm.timeLeft/(GAME_SECONDS*10))+"%";
+  $("gm-timer").classList.toggle("low",sec<=10);
+  if(gm.timeLeft<=0) gmEnd();
+}
+function gmHud(){ $("gm-score").textContent=gm.score||0; $("gm-combo").textContent=gm.streak||0; }
+function gmMsg(t){ const el=$("gm-msg"); el.textContent=t; el.classList.toggle("show",!!t); }
+function gmFxPos(h){ const f=$("gm-field").getBoundingClientRect(), r=gmMole(h).getBoundingClientRect();
+  return { x:r.left-f.left+r.width/2, y:r.top-f.top+r.height*.2 }; }
+function gmFloat(h,text,cls){ const p=gmFxPos(h), el=document.createElement("span");
+  el.className="gm-float "+cls; el.textContent=text; el.style.left=p.x+"px"; el.style.top=p.y+"px";
+  $("gm-field").appendChild(el); setTimeout(()=>el.remove(),900); }
+function gmHammer(ev){ const f=$("gm-field").getBoundingClientRect(), el=document.createElement("span");
+  el.className="gm-hammer"; el.textContent="🔨"; el.style.left=(ev.clientX-f.left)+"px"; el.style.top=(ev.clientY-f.top)+"px";
+  $("gm-field").appendChild(el); setTimeout(()=>el.remove(),300); }
+
+// หยุดเกมทันที (ออกจากหน้า/เปลี่ยนเมนู) — ไม่บันทึกคะแนน
+function gmStop(){ if(!gm.running) return; gm.running=false; clearInterval(gm.timer); gm.timer=null;
+  try{ if("speechSynthesis" in window) speechSynthesis.cancel(); }catch(_){}
+  $("gm-overlay").className="gm-overlay"; }
+$("gm-quit").addEventListener("click",()=>{
+  if(!gm.running) return;
+  gmPause(false);
+  if(confirm("ออกจากเกม?\nคะแนนรอบนี้จะไม่ถูกบันทึก")){ gmStop(); gmShowStep("gm-intro"); gmLoadLeaderboard($("gm-intro-lb")); }
+  else gmResume();
+});
+// สลับแอป/ปิดจอ -> หยุดชั่วคราวอัตโนมัติ
+function gmPause(withOverlay=true){
+  if(!gm.running || gm.paused) return; gm.paused=true;
+  if(withOverlay){ const ov=$("gm-overlay"); ov.className="gm-overlay show";
+    ov.innerHTML=`<div class="gm-count" style="font-size:2.4rem">⏸ หยุดชั่วคราว</div><button class="btn btn--sun" id="gm-resume" type="button">▶️ เล่นต่อ</button>`;
+    $("gm-resume").addEventListener("click",()=>{ gmUnlockAudio(); gmResume(); }); }
+}
+function gmResume(){
+  if(!gm.running || !gm.paused) return;
+  gm.paused=false; gm.last=performance.now();
+  const ov=$("gm-overlay"); ov.className="gm-overlay"; ov.innerHTML="";
+  if(gm.pendingNext){ gm.pendingNext=false; gmNextRound(); }
+}
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") gmPause(true); });
+
+async function gmEnd(){
+  if(!gm.running) return;
+  gm.running=false; clearInterval(gm.timer); gm.timer=null; gm.accepting=false;
+  gmHideAll(); gmMsg(""); gmSfx("end");
+  const score=gm.score, lessonId=gm.lesson.id;
+  $("gm-res-score").textContent=score;
+  $("gm-res-icon").textContent=score>=200?"🏆":score>=100?"🥳":"💪";
+  $("gm-res-badge").innerHTML="";
+  $("gm-res-stats").innerHTML=`<span>✅ ตีถูก ${gm.correct}</span><span>❌ ตีผิด ${gm.wrong}</span><span>⏰ ช้าไป ${gm.missed}</span><span>🔥 ติดกันสูงสุด ${gm.bestStreak}</span>`;
+  const box=$("gm-res-lb");
+  box.innerHTML=`<div style="text-align:center;padding:16px"><span class="spinner-sm" style="display:inline-block;vertical-align:middle"></span> <span class="muted">${isTeacher()?"กำลังโหลดอันดับ...":"กำลังบันทึกคะแนน..."}</span></div>`;
+  setTimeout(()=>gmShowStep("gm-result"),700);
+  try{
+    const r=await api("submitGameScore",{game:GAME_ID,lessonId,score,correct:gm.correct,wrong:gm.wrong});
+    gmRenderLb(box,r);
+    // อัปเดตคะแนนสูงสุดในข้อมูลที่จำไว้ (การ์ดบทจะเห็นทันที ไม่ต้องโหลดใหม่)
+    if(_boot && r.saved){ _boot.games=_boot.games||[];
+      let g=_boot.games.find(x=>x.game===GAME_ID && String(x.lessonId)===String(lessonId));
+      if(!g){ g={game:GAME_ID,lessonId,score:0}; _boot.games.push(g); } g.score=r.myBest; }
+    const badges=[];
+    if(r.saved && r.isNewBest && score>0) badges.push(r.prevBest?`🎉 สถิติใหม่ของหนู! (เดิม ${r.prevBest})`:"🎉 สถิติแรกของหนู!");
+    if(r.saved && r.myRank===1 && score>0) badges.push("👑 อันดับ 1 ของบทนี้!");
+    $("gm-res-badge").innerHTML=badges.map(b=>`<div class="gm-newbest">${b}</div>`).join("");
+    if(badges.length) celebrate();
+  }catch(err){
+    box.innerHTML=`<p class="muted gm-lb-empty">${isUnknownAction(err)?"ยังบันทึกคะแนนไม่ได้ (คุณครูต้องอัปเดตระบบหลังบ้านก่อน)":"บันทึกคะแนนไม่สำเร็จ เน็ตอาจไม่เสถียร 😢"}</p>`;
+  }
+}
+
 async function goBadges(){ if(state.user.role!=="student") return goLessons();
   show("view-badges"); loading(true,"กำลังโหลดตราสะสม...");
   try{ const b=await studentBoot();                 // ⚡ ใช้ข้อมูลรวมชุดเดียว
@@ -2342,7 +2856,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v22";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v23";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
