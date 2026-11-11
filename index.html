@@ -381,6 +381,8 @@ textarea{resize:vertical;min-height:150px}
 .gm-timer.low b{color:var(--danger);animation:gmPulse .6s infinite}
 .gm-bar2{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:620px;margin:0 auto 10px}
 .gm-listen{font-size:1.15rem}
+.gm-listen.talk{animation:gmTalk .5s ease-out 2}
+@keyframes gmTalk{50%{transform:scale(1.08);box-shadow:0 0 0 8px rgba(22,163,163,.18)}}
 
 /* สนามเกม */
 .gm-field{position:relative;max-width:620px;margin:0 auto;padding:16px 12px 12px;border-radius:24px;
@@ -572,9 +574,10 @@ textarea{resize:vertical;min-height:150px}
           <h2 class="display" id="gm-intro-title">ตีตัวตุ่น</h2>
           <ul class="gm-rules">
             <li>🔊 ฟังเสียงคำให้ดี (กดฟังซ้ำได้)</li>
-            <li>🔨 ตีตัวตุ่นที่ถือคำที่ได้ยิน</li>
-            <li>⭐ ตีถูก +10 · ถูกติดกันได้โบนัส 🔥</li>
-            <li>❌ ตีผิด −5 · มีเวลา 60 วินาที</li>
+            <li>🐹 ตัวตุ่นโผล่ขึ้นลงเร็ว ๆ ระวังตัวหลอกเยอะ!</li>
+            <li>🔨 ตีตัวที่ถือคำที่ได้ยิน ถึงจะได้ฟังคำใหม่</li>
+            <li>⭐ ตีถูก +10 · ถูกติดกันได้โบนัส 🔥 · ตีผิด −5</li>
+            <li>⏱️ มีเวลา 60 วินาที</li>
           </ul>
           <button class="btn btn--sun gm-start-btn" id="gm-start" type="button">▶️ เริ่มเล่น</button>
           <p class="muted" id="gm-teacher-note" style="display:none;margin-top:12px">โหมดครู: เล่นทดลองได้ แต่คะแนนจะไม่ถูกบันทึก</p>
@@ -646,7 +649,7 @@ textarea{resize:vertical;min-height:150px}
       <div class="help-step"><div class="ic">🌟</div><div class="tx"><div class="lbl">ขั้นที่ 5</div>
         <h3>ดูผลและคำแนะนำ</h3><p>เมื่อคุณครูตรวจแล้ว จะมีดาวกระพริบบอกคะแนน และกล่องคำแนะนำจากคุณครูในหน้าบทเรียน</p></div></div>
       <div class="help-step"><div class="ic">🎮</div><div class="tx"><div class="lbl">เล่นได้ทุกเมื่อ</div>
-        <h3>เล่นเกมตีตัวตุ่น</h3><p>ไปเมนู "เกม" เลือก 🔨 ตีตัวตุ่น แล้วเลือกบท ฟังเสียงคำแล้วรีบตีตัวตุ่นที่ถือคำนั้น ทำคะแนนให้ติดอันดับนะ!</p></div></div>
+        <h3>เล่นเกมตีตัวตุ่น</h3><p>ไปเมนู "เกม" เลือก 🔨 ตีตัวตุ่น แล้วเลือกบท ฟังเสียงคำแล้วรีบตีตัวตุ่นที่ถือคำนั้น ระวังตัวหลอกนะ! ทำคะแนนให้ติดอันดับเลย</p></div></div>
       <div class="help-step"><div class="ic">🏅</div><div class="tx"><div class="lbl">ขั้นที่ 6</div>
         <h3>เก็บตราสะสม</h3><p>ไปเมนู "ตราสะสม" ดูว่าได้ตราอะไรแล้ว ตั้งใจอ่านและทดสอบให้ครบเพื่อเก็บตราให้หมด!</p></div></div>
     </div>
@@ -916,6 +919,7 @@ textarea{resize:vertical;min-height:150px}
       <h3>🎮 เกมตีตัวตุ่น</h3>
       <ul>
         <li>เกมใช้ <b>คำและเสียงครู</b> จากบทเรียนโดยอัตโนมัติ ไม่ต้องตั้งค่าเพิ่ม (บทต้องมีอย่างน้อย 2 คำ)</li>
+        <li>ตัวตุ่นโผล่ขึ้นลงตลอดเวลา มีตัวหลอกปน — เด็กต้องตีตัวที่ถือคำที่ได้ยินให้ถูกก่อน ถึงจะได้ฟังคำใหม่</li>
         <li>เล่น 60 วินาที ตีถูก +10 (ถูกติดกันได้โบนัส) ตีผิด −5 — ระบบเก็บ <b>คะแนนสูงสุด</b> ของเด็กแต่ละคนต่อบท</li>
         <li>ครูเล่นทดลองได้ (ไม่บันทึกคะแนน) และกด <b>🗑️ ล้างกระดานคะแนนบทนี้</b> ได้ในหน้าก่อนเริ่มเกม</li>
         <li>"เริ่มเทอมใหม่" จะล้างกระดานคะแนนเกมด้วย</li>
@@ -2238,34 +2242,82 @@ function gmUnlockAudio(){
       else { el.pause(); el.muted=false; } }catch(_){ el.muted=false; } });
   try{ if("speechSynthesis" in window){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); } }catch(_){}
 }
+/* ----- เสียงเอฟเฟกต์ (สร้างสดด้วย Web Audio ไม่ต้องโหลดไฟล์) ----- */
+let gmOut=null, gmNoiseBuf=null;
+function gmAudioOut(){
+  if(!gmCtx) return null;
+  if(!gmOut){ try{ const comp=gmCtx.createDynamicsCompressor(); comp.connect(gmCtx.destination);
+      gmOut=gmCtx.createGain(); gmOut.gain.value=.9; gmOut.connect(comp);
+      const len=Math.floor(gmCtx.sampleRate*.3); gmNoiseBuf=gmCtx.createBuffer(1,len,gmCtx.sampleRate);
+      const d=gmNoiseBuf.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    }catch(_){ gmOut=null; } }
+  return gmOut;
+}
+function gmTone(type,f0,f1,dur,vol,delay){
+  const out=gmAudioOut(); if(!out) return;
+  const t=gmCtx.currentTime+(delay||0), o=gmCtx.createOscillator(), g=gmCtx.createGain();
+  o.type=type; o.frequency.setValueAtTime(f0,t); if(f1!==f0) o.frequency.exponentialRampToValueAtTime(f1,t+dur*.85);
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.008); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t+dur+.03);
+}
+function gmNoise(dur,vol,cutoff,delay){
+  const out=gmAudioOut(); if(!out || !gmNoiseBuf) return;
+  const t=gmCtx.currentTime+(delay||0), s=gmCtx.createBufferSource(), f=gmCtx.createBiquadFilter(), g=gmCtx.createGain();
+  s.buffer=gmNoiseBuf; f.type="lowpass"; f.frequency.value=cutoff;
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t+dur+.02);
+}
 function gmSfx(type){
   if(!gmCtx) return;
-  try{ const t=gmCtx.currentTime, o=gmCtx.createOscillator(), g=gmCtx.createGain(); o.connect(g); g.connect(gmCtx.destination);
-    const cfg={ ok:["triangle",620,1240,.16,.18], bad:["square",200,95,.08,.28], tick:["sine",880,880,.1,.09], go:["triangle",660,990,.14,.25], end:["triangle",880,330,.14,.5] }[type];
-    if(!cfg) return;
-    o.type=cfg[0]; o.frequency.setValueAtTime(cfg[1],t); o.frequency.exponentialRampToValueAtTime(cfg[2],t+cfg[4]*.8);
-    g.gain.setValueAtTime(cfg[3],t); g.gain.exponentialRampToValueAtTime(.0001,t+cfg[4]);
-    o.start(t); o.stop(t+cfg[4]+.02);
+  try{
+    switch(type){
+      case "bonk":  gmNoise(.07,.45,2200); gmTone("sine",190,55,.14,.55); break;                     // ป๊อก! (ค้อนโดนหัว)
+      case "whiff": gmNoise(.05,.14,800);  gmTone("sine",120,70,.08,.18); break;                     // ตุ้บ (ตีพื้น)
+      case "ok":    gmTone("triangle",1047,1047,.1,.2); gmTone("triangle",1568,1568,.2,.2,.08); break; // ติ๊ง-ติ๊ง!
+      case "bad":   gmTone("sawtooth",230,105,.3,.13); gmTone("square",170,80,.28,.06); break;       // บึ้ง
+      case "pop":   gmTone("sine",380,820,.07,.045); break;                                          // ปุ๊ (ตัวตุ่นโผล่)
+      case "combo": [784,988,1175,1568].forEach((f,i)=>gmTone("triangle",f,f,.12,.15,i*.07)); break;
+      case "tick":  gmTone("sine",880,880,.09,.13); break;
+      case "go":    gmTone("triangle",660,1320,.28,.17); break;
+      case "end":   [523,659,784,1047].forEach((f,i)=>gmTone("triangle",f,f,i===3?.45:.13,.16,i*.11)); break;
+    }
   }catch(_){}
 }
-function gmSayTarget(){ if(gm.target) speak(gm.target.text,gm.target.audioUrl); }
+function gmBuzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(_){} }   // สั่นเบา ๆ (มือถือ Android)
+
+function gmSayTarget(){
+  if(!gm.target) return;
+  speak(gm.target.text,gm.target.audioUrl); gm.lastSay=gm.t||0;
+  const b=$("gm-replay"); b.classList.remove("talk"); void b.offsetWidth; b.classList.add("talk");
+}
 $("gm-replay").addEventListener("click",()=>{ if(gm.running && !gm.paused) gmSayTarget(); });
+
+/* ----- ระดับความยาก (ยิ่งตีถูก ยิ่งเร็ว ยิ่งโผล่พร้อมกันเยอะ) ----- */
+function gmRand(a,b){ return a+Math.random()*(b-a); }
+function gmMaxUp(){ return Math.min(gm.words.length, gm.correct>=8?5:gm.correct>=3?4:3); }   // ตัวตุ่นบนจอพร้อมกัน (มีตัวหลอกเสมอ)
+function gmUpTime(){ return gmRand(.8,1.25)*Math.max(1100, 2000-gm.correct*60); }           // อยู่บนจอนานเท่าไร
+function gmSpawnGap(){ return gmRand(.7,1.3)*Math.max(300, 560-gm.correct*22); }            // โผล่ตัวใหม่ทุก ๆ
 
 /* ----- เริ่ม / วนรอบ / จบ ----- */
 $("gm-start").addEventListener("click",gmStart);
 $("gm-again").addEventListener("click",gmStart);
+$("gm-field").addEventListener("pointerdown",(ev)=>{     // ตีพลาดโดนพื้น
+  if(!gm.running || gm.paused || ev.target.closest(".gm-overlay")) return;
+  gmHammer(ev); gmSfx("whiff"); });
 
 function gmStart(){
-  if(!gm.words) return;
+  if(!gm.words || gm.running) return;
   gmUnlockAudio();                     // ต้องเรียกทันทีตอนแตะ (ก่อน await ใด ๆ)
   const holes=$("gm-holes"); holes.innerHTML="";
   for(let i=0;i<GAME_HOLES;i++) holes.insertAdjacentHTML("beforeend",holeHTML(i));
   holes.querySelectorAll(".gm-mole").forEach(b=>b.addEventListener("pointerdown",gmOnHit));
-  Object.assign(gm,{ running:true, paused:false, pendingNext:false, score:0, streak:0, bestStreak:0, correct:0, wrong:0, missed:0,
-    timeLeft:GAME_SECONDS*1000, roundId:0, accepting:false, roundRemain:null, slots:{}, target:null, queue:[], startedAt:Date.now() });
+  Object.assign(gm,{ running:true, paused:false, t:0, score:0, streak:0, bestStreak:0, correct:0, wrong:0,
+    timeLeft:GAME_SECONDS*1000, target:null, queue:[], sayAt:null, lastSay:0, targetReadyAt:0, lastTargetShow:-9999, nextSpawn:0,
+    holes:Array.from({length:GAME_HOLES},()=>({ state:"down", word:null, until:0, free:0 })) });
   gmHud(); gmShowStep("gm-play"); gmMsg("");
   gmCountdown(()=>{ if(!gm.running) return;
-    gm.last=performance.now(); gm.timer=setInterval(gmTick,100); gmNextRound(); });
+    gmNewTarget(0);
+    gm.last=performance.now(); gm.timer=setInterval(gmTick,40); });
 }
 function gmCountdown(done){
   const ov=$("gm-overlay"); ov.className="gm-overlay show";
@@ -2275,72 +2327,99 @@ function gmCountdown(done){
     ov.innerHTML=`<div class="gm-count">${seq[k]}</div>`; gmSfx(k<3?"tick":"go"); k++; setTimeout(step,k<4?650:500); };
   step();
 }
-function gmWindow(){ return Math.max(3200, 6000-gm.correct*180); }   // เวลาให้ตี: เริ่ม 6 วิ ยิ่งเก่งยิ่งเร็วขึ้น
 function gmPickTarget(){
   if(!gm.queue.length) gm.queue=shuffleArr(gm.words.slice());
   let t=gm.queue.shift();
   if(gm.target && t===gm.target && gm.words.length>1){ gm.queue.push(t); t=gm.queue.shift(); }   // ไม่ให้ซ้ำคำเดิมติดกัน
   return t;
 }
+// เปลี่ยนเป็นคำใหม่ — จะเกิดขึ้น "เฉพาะตอนตีถูก" เท่านั้น
+function gmNewTarget(delay){
+  gm.target=gmPickTarget();
+  gm.sayAt=gm.t+delay;                 // พูดคำใหม่
+  gm.targetReadyAt=gm.sayAt+650;       // ให้ได้ยินก่อน ตัวตุ่นที่ถือคำนี้ถึงจะเริ่มโผล่
+}
 function gmMole(i){ return $("gm-holes").querySelector(`.gm-mole[data-i="${i}"]`); }
-function gmHideAll(){ $("gm-holes").querySelectorAll(".gm-mole").forEach(m=>{ m.classList.remove("up","ok","bad","reveal"); m.classList.add("down"); }); }
-function gmNextRound(){
-  if(!gm.running) return;
-  if(gm.paused){ gm.pendingNext=true; return; }
-  gmHideAll(); gmMsg("");
-  gm.accepting=false; gm.roundRemain=null; gm.slots={};
-  const target=gmPickTarget(); gm.target=target;
-  const n=Math.min(gm.words.length, gm.correct>=6?4:3);
-  const others=shuffleArr(gm.words.filter(w=>w!==target)).slice(0,n-1);
-  const set=shuffleArr([target].concat(others));
-  const holes=shuffleArr([0,1,2,3,4,5]).slice(0,n);
-  holes.forEach((h,k)=>{ gm.slots[h]=set[k]; });
-  const rid=++gm.roundId;
-  gmSayTarget();
-  setTimeout(()=>{ if(!gm.running || rid!==gm.roundId) return;
-    holes.forEach((h,k)=>{ const m=gmMole(h), w=gm.slots[h];
-      const sign=m.querySelector(".gm-sign"), len=[...w.text].length;
-      sign.className="gm-sign"+(len>8?" s3":len>5?" s2":"");
-      m.querySelector(".gm-word").textContent=w.text; m.setAttribute("aria-label",w.text);
-      setTimeout(()=>{ if(gm.running && rid===gm.roundId){ m.classList.remove("down"); m.classList.add("up"); } }, k*90); });
-    gm.accepting=true; gm.roundRemain=gmWindow();
-  }, 380);
+function gmHideAll(){
+  (gm.holes||[]).forEach(h=>{ h.state="down"; h.word=null; });
+  $("gm-holes").querySelectorAll(".gm-mole").forEach(m=>{ m.classList.remove("up","ok","bad","reveal"); m.classList.add("down"); }); }
+function gmOnScreen(){ const s=new Set(); gm.holes.forEach(h=>{ if(h.state!=="down" && h.word) s.add(h.word); }); return s; }
+
+function gmPopUp(i,w){
+  const h=gm.holes[i], m=gmMole(i);
+  h.state="up"; h.word=w; h.until=gm.t+gmUpTime();
+  if(w===gm.target) gm.lastTargetShow=gm.t;
+  const sign=m.querySelector(".gm-sign"), len=[...w.text].length;
+  sign.className="gm-sign"+(len>8?" s3":len>5?" s2":"");
+  m.querySelector(".gm-word").textContent=w.text; m.setAttribute("aria-label",w.text);
+  m.classList.remove("down","ok","bad","reveal"); m.classList.add("up");
+  gmSfx("pop");
+}
+function gmGoDown(i){
+  const h=gm.holes[i], m=gmMole(i);
+  h.state="down"; h.free=gm.t+gmRand(250,550);      // พักหลุมนี้สักครู่ก่อนโผล่ใหม่
+  m.classList.remove("up","reveal"); m.classList.add("down");
+  setTimeout(()=>{ if(h.state==="down") m.classList.remove("ok","bad"); },200);
+}
+// เลือกหลุมว่าง + เลือกคำ (ตัวจริงหรือตัวหลอก) แล้วให้โผล่
+function gmSpawn(){
+  const upCount=gm.holes.filter(h=>h.state!=="down").length;
+  if(upCount>=gmMaxUp()) return;
+  const free=gm.holes.map((h,i)=>i).filter(i=>gm.holes[i].state==="down" && gm.t>=gm.holes[i].free);
+  if(!free.length) return;
+  const i=free[Math.floor(Math.random()*free.length)];
+  const onScreen=gmOnScreen(), tgt=gm.target;
+  const tgtReady=gm.t>=gm.targetReadyAt && !onScreen.has(tgt);
+  // ตัวจริงต้องโผล่บ่อยพอ: ถ้าหายไปนานเกิน 1.6 วิ บังคับให้โผล่ ไม่งั้นสุ่ม 35%
+  let w=null;
+  if(tgtReady && (gm.t-gm.lastTargetShow>1600 || Math.random()<.35)) w=tgt;
+  else { const decoys=gm.words.filter(x=>x!==tgt && !onScreen.has(x));
+    if(decoys.length) w=decoys[Math.floor(Math.random()*decoys.length)];
+    else if(tgtReady) w=tgt; }
+  if(w) gmPopUp(i,w);
 }
 function gmOnHit(ev){
-  ev.preventDefault();
+  ev.preventDefault(); ev.stopPropagation();
   gmHammer(ev);
-  if(!gm.running || gm.paused || !gm.accepting) return;
-  const h=Number(ev.currentTarget.dataset.i), m=gmMole(h), w=gm.slots[h];
-  if(!w || !m.classList.contains("up")) return;
-  gm.accepting=false; gm.roundRemain=null;
-  const right=(w===gm.target);
+  if(!gm.running || gm.paused) return;
+  const i=Number(ev.currentTarget.dataset.i), h=gm.holes[i], m=gmMole(i);
+  if(!h || h.state!=="up"){ gmSfx("whiff"); return; }
+  gmSfx("bonk"); gmBuzz(25);
+  const right=(h.word===gm.target);
+  h.state="hit"; h.until=gm.t+(right?420:520);
+  m.classList.remove("reveal");
   if(right){
     gm.streak++; gm.bestStreak=Math.max(gm.bestStreak,gm.streak); gm.correct++;
     const pts=10+Math.min(gm.streak-1,5)*2; gm.score+=pts;
-    m.classList.add("ok"); gmFloat(h,"+"+pts,"ok"); gmSfx("ok");
-    if(gm.streak>=3) gmMsg("🔥 ถูกติดกัน "+gm.streak+" ครั้ง!");
+    m.classList.add("ok"); gmFloat(i,"+"+pts,"ok"); setTimeout(()=>gmSfx("ok"),60);
+    if(gm.streak>=3 && gm.streak%5===0){ setTimeout(()=>gmSfx("combo"),200); gmMsg("🌟 สุดยอด! ถูกติดกัน "+gm.streak+" ครั้ง!"); }
+    else if(gm.streak>=3) gmMsg("🔥 ถูกติดกัน "+gm.streak+" ครั้ง!");
+    else gmMsg("");
+    gmNewTarget(550);                  // ตีถูกแล้วถึงจะได้ฟังคำใหม่
   }else{
     gm.streak=0; gm.wrong++; gm.score=Math.max(0,gm.score-5);
-    m.classList.add("bad"); gmFloat(h,"−5","bad"); gmSfx("bad");
-    gmReveal(); gmMsg("คำที่ถูกคือ “"+gm.target.text+"”");
-    setTimeout(gmSayTarget,350);                       // ฟังคำที่ถูกอีกครั้ง ช่วยจำ
+    m.classList.add("bad"); gmFloat(i,"−5","bad"); setTimeout(()=>gmSfx("bad"),60); gmBuzz([30,40,30]);
+    gmMsg("ไม่ใช่ตัวนี้! ฟังอีกครั้งนะ 🔊");
+    gm.holes.forEach((x,k)=>{ if(x.state==="up" && x.word===gm.target) gmMole(k).classList.add("reveal"); });   // ตัวจริงอยู่บนจอ -> เรืองแสงช่วย
+    if(gm.sayAt==null && gm.t-gm.lastSay>1200) gm.sayAt=gm.t+450;     // พูดคำเดิมซ้ำให้ฟัง
   }
   gmHud();
-  setTimeout(gmNextRound, right?650:1700);
 }
-function gmMiss(){
-  gm.accepting=false; gm.streak=0; gm.missed++;
-  gmReveal(); gmMsg("⏰ ช้าไปนิด! คำนี้คือ “"+gm.target.text+"”"); gmSayTarget(); gmHud();
-  setTimeout(gmNextRound,1700);
-}
-function gmReveal(){ Object.keys(gm.slots).forEach(h=>{ if(gm.slots[h]===gm.target) gmMole(h).classList.add("reveal"); }); }
+let _gmMsgTimer=null;
+function gmMsg(t){ const el=$("gm-msg"); el.textContent=t; el.classList.toggle("show",!!t);
+  clearTimeout(_gmMsgTimer); if(t) _gmMsgTimer=setTimeout(()=>el.classList.remove("show"),1600); }
+
+// นาฬิกาเกม: ทุกอย่าง (โผล่/หลบ/พูดคำ/เวลา) คิดจาก gm.t จึงหยุดชั่วคราวได้แม่นยำ
 function gmTick(){
   if(!gm.running) return;
   if($("view-games").style.display==="none"){ gmStop(); return; }   // ออกจากหน้าเกมไปแล้ว -> หยุด
-  const now=performance.now(), dt=now-gm.last; gm.last=now;
+  const now=performance.now(), dt=Math.min(250,now-gm.last); gm.last=now;
   if(gm.paused) return;
-  gm.timeLeft-=dt;
-  if(gm.roundRemain!=null){ gm.roundRemain-=dt; if(gm.roundRemain<=0){ gm.roundRemain=null; gmMiss(); } }
+  gm.t+=dt; gm.timeLeft-=dt;
+  if(gm.sayAt!=null && gm.t>=gm.sayAt){ gm.sayAt=null; gmSayTarget(); }
+  else if(gm.sayAt==null && gm.t-gm.lastSay>7000) gmSayTarget();          // ยังตีไม่ได้ -> พูดซ้ำทุก 7 วิ
+  gm.holes.forEach((h,i)=>{ if((h.state==="up"||h.state==="hit") && gm.t>=h.until) gmGoDown(i); });
+  if(gm.t>=gm.nextSpawn){ gmSpawn(); gm.nextSpawn=gm.t+gmSpawnGap(); }
   const sec=Math.max(0,Math.ceil(gm.timeLeft/1000));
   $("gm-time").textContent=sec;
   $("gm-timebar").style.width=Math.max(0,gm.timeLeft/(GAME_SECONDS*10))+"%";
@@ -2348,10 +2427,9 @@ function gmTick(){
   if(gm.timeLeft<=0) gmEnd();
 }
 function gmHud(){ $("gm-score").textContent=gm.score||0; $("gm-combo").textContent=gm.streak||0; }
-function gmMsg(t){ const el=$("gm-msg"); el.textContent=t; el.classList.toggle("show",!!t); }
-function gmFxPos(h){ const f=$("gm-field").getBoundingClientRect(), r=gmMole(h).getBoundingClientRect();
+function gmFxPos(i){ const f=$("gm-field").getBoundingClientRect(), r=gmMole(i).getBoundingClientRect();
   return { x:r.left-f.left+r.width/2, y:r.top-f.top+r.height*.2 }; }
-function gmFloat(h,text,cls){ const p=gmFxPos(h), el=document.createElement("span");
+function gmFloat(i,text,cls){ const p=gmFxPos(i), el=document.createElement("span");
   el.className="gm-float "+cls; el.textContent=text; el.style.left=p.x+"px"; el.style.top=p.y+"px";
   $("gm-field").appendChild(el); setTimeout(()=>el.remove(),900); }
 function gmHammer(ev){ const f=$("gm-field").getBoundingClientRect(), el=document.createElement("span");
@@ -2379,19 +2457,18 @@ function gmResume(){
   if(!gm.running || !gm.paused) return;
   gm.paused=false; gm.last=performance.now();
   const ov=$("gm-overlay"); ov.className="gm-overlay"; ov.innerHTML="";
-  if(gm.pendingNext){ gm.pendingNext=false; gmNextRound(); }
 }
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") gmPause(true); });
 
 async function gmEnd(){
   if(!gm.running) return;
-  gm.running=false; clearInterval(gm.timer); gm.timer=null; gm.accepting=false;
+  gm.running=false; clearInterval(gm.timer); gm.timer=null;
   gmHideAll(); gmMsg(""); gmSfx("end");
   const score=gm.score, lessonId=gm.lesson.id;
   $("gm-res-score").textContent=score;
   $("gm-res-icon").textContent=score>=200?"🏆":score>=100?"🥳":"💪";
   $("gm-res-badge").innerHTML="";
-  $("gm-res-stats").innerHTML=`<span>✅ ตีถูก ${gm.correct}</span><span>❌ ตีผิด ${gm.wrong}</span><span>⏰ ช้าไป ${gm.missed}</span><span>🔥 ติดกันสูงสุด ${gm.bestStreak}</span>`;
+  $("gm-res-stats").innerHTML=`<span>✅ ตีถูก ${gm.correct} คำ</span><span>❌ ตีผิด ${gm.wrong}</span><span>🔥 ติดกันสูงสุด ${gm.bestStreak}</span>`;
   const box=$("gm-res-lb");
   box.innerHTML=`<div style="text-align:center;padding:16px"><span class="spinner-sm" style="display:inline-block;vertical-align:middle"></span> <span class="muted">${isTeacher()?"กำลังโหลดอันดับ...":"กำลังบันทึกคะแนน..."}</span></div>`;
   setTimeout(()=>gmShowStep("gm-result"),700);
@@ -2856,7 +2933,7 @@ function renderReport(username,data){
 }
 
 /* ===== หน้าอัปเดตแอป ===== */
-const APP_VERSION = "v23";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
+const APP_VERSION = "v24";   // เวอร์ชันสำรอง (ถ้าอ่านจาก Service Worker ไม่ได้)
 function versionLabel(raw){ if(!raw) return APP_VERSION;
   const m=String(raw).match(/v\d+[\w.-]*/i); return m?m[0]:String(raw); }
 function getSWVersion(){ return new Promise(res=>{
